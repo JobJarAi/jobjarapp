@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "jobjarai",
+    "slug": "jobjarai",
+    "version": "1.0.2",
+    "orientation": "portrait",
+    "icon": "./assets/Icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/jobjarwhite2.png",
+      "resizeMode": "contain",
+      "width": 200,
+      "backgroundColor": "#000000"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rezgenie.app.jobjarai"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.rezgenie.app.jobjarai"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "09042766-df1b-4a72-930a-75def1b16edd"
+      }
+    }
+  }
+}
