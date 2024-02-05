@@ -202,6 +202,9 @@ const JobRecommendations = () => {
                 </>
             ) : (
                 <>
+                    <TouchableOpacity style={styles.livefeedButton} onPress={goToLiveFeed}>
+                        <Text style={styles.closeButtonText}>Go To Live Feed</Text>
+                    </TouchableOpacity>
                     <Text style={styles.noJobsText}>No jobs to display. Please update your job preferences.</Text>
                     <TouchableOpacity style={styles.buttonStyle} onPress={handleRefresh}>
                         {isLoading ? (
