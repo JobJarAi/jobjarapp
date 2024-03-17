@@ -112,7 +112,7 @@ const OriginalPostForm = () => {
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 40,
+        marginBottom: 0,
         marginTop: 10,
         backgroundColor: '#000000', 
         alignItems: 'center',

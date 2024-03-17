@@ -23,7 +23,7 @@ const Login = () => {
 
       // Navigate based on role
       if (role === 'jobseeker') {
-        navigation.navigate("Recommendations");
+        navigation.navigate("MainTab");
       } else if (role === 'recruiter') {
         navigation.navigate("Toolbox");
       } else if (role === 'employer') {
