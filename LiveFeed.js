@@ -16,9 +16,37 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DefaultTheme, TextInput } from 'react-native-paper';
 import OriginalPostForm from './components/OriginalPostForm';
 
+const ResponsiveImage = ({ source, borderRadius, ...props }) => {
+    const [size, setSize] = useState({ width: undefined, height: undefined });
+
+    const onContainerLayout = (event) => {
+        const { width: containerWidth } = event.nativeEvent.layout;
+        Image.getSize(source.uri, (width, height) => {
+            // Calculate the width and height ratios
+            const widthRatio = containerWidth / width;
+            const scaledHeight = height * widthRatio;
+            // Set new width and height
+            setSize({ width: containerWidth, height: scaledHeight });
+        });
+    };
+
+    return (
+        <View onLayout={onContainerLayout} {...props}>
+            {size.width && size.height ? (
+                <Image
+                    source={source}
+                    style={{ width: size.width, height: size.height, borderRadius }}
+                    resizeMode="cover"
+                />
+            ) : null}
+        </View>
+    );
+};
+
 const LiveFeed = () => {
     // State declarations
     const [reposts, setReposts] = useState([]);
+    const [commentLikes, setCommentLikes] = useState({});
     const [isLoading, setIsLoading] = useState(false);
     const [isApplying, setIsApplying] = useState(false);
     const [isCommenting, setIsCommenting] = useState(false);
@@ -30,24 +58,47 @@ const LiveFeed = () => {
     const [page, setPage] = useState(1);
     const itemsPerPage = 5;
 
+    const fetchUserId = async () => {
+        try {
+            const authToken = await AsyncStorage.getItem('auth_token');
+            const response = await axios.get('http://localhost:3001/api/user/details', {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            setCurrentUser(response.data.userId); // This will trigger a re-render
+        } catch (error) {
+            console.error('Error fetching user ID:', error);
+        }
+    };
+
     const fetchReposts = async () => {
         if (!hasMore || isLoading) return;
 
         setIsLoading(true);
+        const token = await AsyncStorage.getItem('auth_token');
 
         try {
-            const token = await AsyncStorage.getItem('auth_token');
-            const response = await axios.get(`https://jobjar.ai:3001/api/reposts?page=${page}&perPage=${itemsPerPage}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+            const response = await axios.get(`http://localhost:3001/api/posts?page=${page}&perPage=${itemsPerPage}`, {
+                headers: { Authorization: `Bearer ${token}` }
             });
+
             if (page === 1) {
                 setReposts(response.data);
             } else {
                 setReposts(prevReposts => [...prevReposts, ...response.data]);
             }
+
             setHasMore(response.data.length === itemsPerPage);
+
+            // After currentUser is surely set, map through comments to set likes
+            const newCommentLikes = response.data.reduce((acc, post) => {
+                post.comments.forEach(comment => {
+                    const likedByCurrentUser = comment.upMarks.includes(currentUser); // No need to convert to string if IDs are stored correctly
+                    acc[comment._id] = likedByCurrentUser;
+                });
+                return acc;
+            }, {});
+
+            setCommentLikes(newCommentLikes); // Now this will correctly reflect the liked state
         } catch (error) {
             console.error("Error fetching reposts:", error);
         } finally {
@@ -56,8 +107,12 @@ const LiveFeed = () => {
     };
 
     useEffect(() => {
-        fetchReposts();
-        fetchUserId();
+        async function initFetch() {
+            await fetchUserId();
+            await fetchReposts();
+        }
+
+        initFetch();
     }, [page]);
 
     const loadMoreReposts = () => {
@@ -98,7 +153,7 @@ const LiveFeed = () => {
     const refreshRepost = async (repostId) => {
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            const response = await axios.get(`https://jobjar.ai:3001/api/reposts/${repostId}`, {
+            const response = await axios.get(`http://localhost:3001/api/posts/${repostId}`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -122,7 +177,7 @@ const LiveFeed = () => {
         setIsReviewing(true);
         try {
             const authToken = await AsyncStorage.getItem('auth_token');
-            const response = await axios.post(`https://jobjar.ai:3001/api/moderate/${repostId}`, {}, {
+            const response = await axios.post(`http://localhost:3001/api/moderate/${repostId}`, {}, {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
 
@@ -139,20 +194,6 @@ const LiveFeed = () => {
         setIsReviewing(false);
     };
 
-    const fetchUserId = async () => {
-        try {
-            const authToken = await AsyncStorage.getItem('auth_token');
-            if (authToken) {
-                const response = await axios.get('https://jobjar.ai:3001/api/user/details', {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-                setCurrentUser(response.data.userId);
-            }
-        } catch (error) {
-            console.error('Error fetching user ID:', error);
-        }
-    };
-
     const handleApply = async (jobId) => {
         console.log('Apply button clicked, jobId:', jobId); // Log to check if this function is called
         setIsApplying(true);
@@ -161,7 +202,7 @@ const LiveFeed = () => {
             const authToken = await AsyncStorage.getItem('auth_token');
             console.log('Got auth token:', authToken); // Check if authToken is retrieved
 
-            const response = await axios.post(`https://jobjar.ai:3001/api/apply`, { jobId }, {
+            const response = await axios.post(`http://localhost:3001/api/apply`, { jobId }, {
                 headers: { Authorization: `Bearer ${authToken}` }
             });
 
@@ -209,11 +250,9 @@ const LiveFeed = () => {
 
         try {
             const authToken = await AsyncStorage.getItem('auth_token');
-            const role = await AsyncStorage.getItem('user_role'); // Retrieve user role from AsyncStorage
 
-            await axios.post(`https://jobjar.ai:3001/api/reposts/${repostId}/comment`, {
+            await axios.post(`http://localhost:3001/api/posts/${repostId}/comment`, {
                 comment: commentText,
-                role,
             }, {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
@@ -225,6 +264,29 @@ const LiveFeed = () => {
         setIsCommenting(false);
     };
 
+    const handleCommentLikeToggle = async (postId, commentId) => {
+        setIsLoading(true);
+        try {
+            const isLiked = commentLikes[commentId] || false;
+            const token = await AsyncStorage.getItem('auth_token');
+            if (isLiked) {
+                await axios.put(`http://localhost:3001/api/posts/${postId}/comments/${commentId}/unlike`, {}, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+            } else {
+                await axios.put(`http://localhost:3001/api/posts/${postId}/comments/${commentId}/like`, {}, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+            }
+            // Optimistically update the local state to reflect like/unlike action
+            setCommentLikes(prevLikes => ({ ...prevLikes, [commentId]: !isLiked }));
+        } catch (error) {
+            console.error('Error toggling comment like:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleLike = async (postId) => {
         setReposts(prevReposts => prevReposts.map(repost =>
             repost._id === postId
@@ -234,7 +296,7 @@ const LiveFeed = () => {
 
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            await axios.post(`https://jobjar.ai:3001/api/reposts/${postId}/like`, {}, {
+            await axios.post(`http://localhost:3001/api/posts/${postId}/like`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         } catch (error) {
@@ -256,7 +318,7 @@ const LiveFeed = () => {
 
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            await axios.delete(`https://jobjar.ai:3001/api/reposts/${postId}/unlike`, {
+            await axios.delete(`http://localhost:3001/api/posts/${postId}/unlike`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         } catch (error) {
@@ -280,13 +342,13 @@ const LiveFeed = () => {
                         source={{ uri: item.profilePic }}
                     />
                 ) : (
-                    // Placeholder for Avatar
                     <View style={styles.avatarPlaceholder}>
-                        <Text>{item.name.charAt(0)}</Text>
+                        <Text>{item.firstName.charAt(0)}</Text>
                     </View>
                 )}
+
                 <Text style={styles.name} onPress={() => goToUserProfile(item.userId)}>
-                    {item.name}
+                    {item.firstName} {item.lastName}
                 </Text>
                 <View style={styles.moderationIconContainer}>
                     {
@@ -317,7 +379,8 @@ const LiveFeed = () => {
                         {item.image && (
                             <Image
                                 style={styles.postImage}
-                                source={{ uri: item.image }}
+                                source={{ uri: item.originalContentImage }}
+                                resizeMode="cover"
                             />
                         )}
                     </View>
@@ -351,10 +414,13 @@ const LiveFeed = () => {
                 <View style={styles.originalContentContainer}>
                     <Text style={styles.content}>{item.originalContent}</Text>
                     {item.originalContentImage && (
-                        <Image
-                            style={styles.postImage}
-                            source={{ uri: item.originalContentImage }}
-                        />
+                        <View style={styles.postImageContainer}>
+                            <ResponsiveImage
+                                style={styles.postImage}
+                                source={{ uri: item.originalContentImage }}
+                                borderRadius={10}
+                            />
+                        </View>
                     )}
                     {/* Comments Section */}
                     {item.comments && item.comments.length > 0 && (
@@ -362,15 +428,44 @@ const LiveFeed = () => {
                             <Text style={styles.commentsHeading}>Comments</Text>
                             <View style={styles.commentsContainer}>
                                 {item.comments.map((comment, index) => (
-                                    <View style={styles.commentItem} key={index}>
+                                    <View style={styles.commentItem} key={comment._id}>
+                                        {/* Profile Picture next to Comment */}
+                                        {comment.profilePic ? (
+                                            <Image
+                                                style={styles.commentProfilePic}
+                                                source={{ uri: comment.profilePic }}
+                                            />
+                                        ) : (
+                                            <View style={styles.avatarPlaceholder}>
+                                                <Text>{comment.firstName.charAt(0)}</Text>
+                                            </View>
+                                        )}
                                         {/* Display Comment */}
-                                        <Text style={styles.commentAuthor}>{comment.name}</Text>
-                                        <Text style={styles.commentText}>{comment.comment}</Text>
+                                        <View style={styles.commentContent}>
+                                            <Text style={styles.commentAuthor}>{comment.firstName} {item.lastName}</Text>
+                                            <Text style={styles.commentText}>{comment.comment}</Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                handleCommentLikeToggle(item._id, comment._id)
+                                            }
+                                            }
+                                        >
+                                            <FontAwesomeIcon
+                                                icon={faHeart}
+                                                size={20}
+                                                color={commentLikes[comment._id] ? '#01BF02' : 'gray'}
+                                            />
+                                            {/* Assuming you have a mechanism to keep track of like count */}
+                                            <Text style={styles.likeCount}>{commentLikes[comment._id] || 0}</Text>
+                                        </TouchableOpacity>
+
                                     </View>
                                 ))}
                             </View>
                         </>
                     )}
+
                     {/* Comment Input */}
                     <View style={styles.commentInputContainer}>
                         <TextInput
@@ -454,7 +549,7 @@ const styles = StyleSheet.create({
         borderColor: '#ccc',
         borderRadius: 10,
         padding: 10,
-        marginBottom: 10,
+        marginBottom: 20,
     },
     profileSection: {
         flexDirection: 'row',
@@ -462,8 +557,8 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     profilePic: {
-        width: 50,
-        height: 50,
+        width: 40,
+        height: 40,
         borderRadius: 25,
         marginRight: 10,
     },
@@ -489,12 +584,22 @@ const styles = StyleSheet.create({
         // ... styles for job content container
     },
     originalContentContainer: {
-        // ... styles for original content container
+        marginTop: 10,
+    },
+    postImageContainer: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 10,
+        padding: 10,
+        marginBottom: 10,
+        alignItems: 'center', // Center the items horizontally
+        justifyContent: 'center', // Center the items vertically
+        backgroundColor: 'white',
     },
     postImage: {
         width: '100%',
-        height: undefined,
-        aspectRatio: 1,
+        //  height: '100%', // Take up all space available
+        //  resizeMode: 'cover', // Cover the area of the view
         borderRadius: 10,
     },
     interactionsBar: {
@@ -573,14 +678,27 @@ const styles = StyleSheet.create({
         maxHeight: 200,
         overflow: 'scroll',
     },
+    commentProfilePic: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        marginRight: 10,
+    },
+    commentContent: {
+        flex: 1,
+        flexDirection: 'column', // Stack author name and comment text vertically
+    },
     commentItem: {
+        flexDirection: 'row',
         backgroundColor: '#f0f0f0',
         borderRadius: 5,
-        padding: 8,
-        marginBottom: 5,
+        padding: 10, // Increased padding for more space inside the comment block
+        marginBottom: 10, // Increased space between comments
+        alignItems: 'flex-start', // Align the start of the items to cater for different text lengths
     },
     commentAuthor: {
         fontWeight: 'bold',
+        marginBottom: 4, // Space between author name and comment text
     },
     commentText: {
         color: '#333',
@@ -610,5 +728,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "bold",
     },
-    // ... other styles as needed
+    likeCommentButton: {
+        // Add styling for the like button, e.g. padding, margin
+    },
 });

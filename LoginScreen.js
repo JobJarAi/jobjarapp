@@ -25,7 +25,6 @@ const Login = () => {
 
       await AsyncStorage.setItem('auth_token', token);
 
-      // Handle referrals here if needed
       const jobId = await AsyncStorage.getItem('jobId');
       if (jobId) {
         await handleReferral(token, jobId);
@@ -35,7 +34,7 @@ const Login = () => {
 
       Alert.alert('Login Successful', 'You are now logged in.');
 
-      navigation.navigate('MainTab'); // Navigate to the main tab regardless of role
+      navigation.navigate('MainTab');
     } catch (error) {
       setIsLoading(false);
       Alert.alert('Login Failed', error.response?.data?.message || 'Failed to login, please check your credentials.');
@@ -59,46 +58,51 @@ const Login = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.logoContainer}>
-        <Image source={require('./assets/whitelogo.png')} style={styles.logo} />
-        <Text style={styles.heading}>Login</Text>
-      </View>
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#888"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <View style={styles.passwordContainer}>
+    <View style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.contentContainer}
+      >
+        <View style={styles.logoContainer}>
+          <Image source={require('./assets/whitelogo.png')} style={styles.logo} />
+        </View>
+        <Text style={styles.heading}>Welcome Back!</Text>
+        <View style={styles.form}>
           <TextInput
-            style={[styles.input, { flex: 1 }]}
-            placeholder="Password"
+            style={styles.input}
+            placeholder="Email"
             placeholderTextColor="#888"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
             autoCapitalize="none"
           />
-          <TouchableOpacity style={styles.showButton} onPress={() => setShowPassword(!showPassword)}>
-            <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} color="white" />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              placeholderTextColor="#888"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity style={styles.showButton} onPress={() => setShowPassword(!showPassword)}>
+              <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} color="white" size={20} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.forgotButton}>
+            <Text style={styles.forgotButtonText}>Forgot Password?</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={isLoading}>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text style={styles.buttonText}>Log In</Text>
+            )}
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={isLoading}>
-          {isLoading ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <Text style={styles.buttonText}>Log In</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      </KeyboardAvoidingView>
       <View style={styles.footer}>
         <Text style={styles.footerText}>
           Don't have an account?{' '}
@@ -107,7 +111,7 @@ const Login = () => {
           </Text>
         </Text>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -116,22 +120,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a1a',
     paddingHorizontal: 30,
-    justifyContent: 'center',
+  },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'top',
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 40,
   },
   logo: {
-    width: 150,
-    height: 150,
+    width: 300,
+    height: 200,
     resizeMode: 'contain',
   },
   heading: {
     fontSize: 28,
     fontWeight: 'bold',
     color: 'white',
-    marginTop: 20,
+    marginBottom: 90,
+    textAlign: 'center',
   },
   form: {
     marginBottom: 20,
@@ -148,14 +155,32 @@ const styles = StyleSheet.create({
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 16,
+  },
+  passwordInput: {
+    flex: 1,
+    backgroundColor: '#333',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    color: 'white',
+    fontSize: 16,
   },
   showButton: {
     marginLeft: 10,
+    paddingHorizontal: 10,
+  },
+  forgotButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 20,
+  },
+  forgotButtonText: {
+    color: '#01bf02',
+    fontSize: 16,
   },
   button: {
     backgroundColor: '#01bf02',
     paddingVertical: 16,
-    paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -166,6 +191,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
+    marginBottom: 100,
   },
   footerText: {
     color: 'white',

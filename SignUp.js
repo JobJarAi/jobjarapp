@@ -1,11 +1,9 @@
-// SignUp.js for React Native
 import React, { useState } from 'react';
 import { View, Image, TouchableOpacity, ScrollView, StyleSheet, Alert, Text, TextInput } from 'react-native';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logo from './assets/whitelogo.png';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faCheck, faEye, faEyeSlash, faPaperPlane, faSquareCheck } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faEye, faEyeSlash, faPaperPlane } from '@fortawesome/free-solid-svg-icons';
 
 const SignUp = ({ navigation }) => {
     const [email, setEmail] = useState('');
@@ -49,7 +47,6 @@ const SignUp = ({ navigation }) => {
 
     const handleSendVerificationEmail = async () => {
         setVerificationSent(true);
-        // Send a request to your backend to send a verification code to the provided email
         try {
             const response = await axios.post(`https://jobjar.ai:3001/api/email`, { email });
             if (response.status === 200) {
@@ -71,10 +68,8 @@ const SignUp = ({ navigation }) => {
                 setEmailVerified(true);
                 setVerificationSent(false);
                 Alert.alert('Email verified successfully', 'You can now create your account.');
-                // Optionally, you can clear the verification code state here
                 setVerificationCode('');
             } else {
-                // Handle any message that's not a successful verification
                 throw new Error('Verification failed. Please try again.');
             }
         } catch (error) {
@@ -101,7 +96,6 @@ const SignUp = ({ navigation }) => {
             setIsLoading(true);
 
             const lowercaseEmail = email.toLowerCase();
-            // First, create the user account
             await axios.post(`http://localhost:3001/api/user-signup`, {
                 lowercaseEmail, password, firstName, lastName,
             });
@@ -122,24 +116,26 @@ const SignUp = ({ navigation }) => {
     return (
         <ScrollView style={styles.container}>
             <View style={styles.logoContainer}>
-                <Text style={styles.logoText}>JobJar.Ai</Text>
+                <Image source={Logo} style={styles.logo} />
             </View>
             <View style={styles.formContainer}>
                 <Text style={styles.heading}>Sign Up</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="First Name"
-                    placeholderTextColor="#888"
-                    value={firstName}
-                    onChangeText={setFirstName}
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Last Name"
-                    placeholderTextColor="#888"
-                    value={lastName}
-                    onChangeText={setLastName}
-                />
+                <View style={styles.inputRow}>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="First Name"
+                        placeholderTextColor="#888"
+                        value={firstName}
+                        onChangeText={setFirstName}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Last Name"
+                        placeholderTextColor="#888"
+                        value={lastName}
+                        onChangeText={setLastName}
+                    />
+                </View>
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={[styles.input, emailError && styles.inputError]}
@@ -151,11 +147,13 @@ const SignUp = ({ navigation }) => {
                             setEmailError(!validateEmail(text));
                         }}
                         editable={!emailVerified}
+                        autoCapitalize="none"
+                        keyboardType="email-address"
                     />
                     {emailVerified ? (
-                        <FontAwesomeIcon icon={faSquareCheck} color="green" />
+                        <FontAwesomeIcon icon={faCheck} color="#01bf02" style={styles.inputIcon} />
                     ) : (
-                        <TouchableOpacity onPress={handleSendVerificationEmail}>
+                        <TouchableOpacity onPress={handleSendVerificationEmail} style={styles.inputIcon}>
                             <FontAwesomeIcon icon={faPaperPlane} color="#01bf02" />
                         </TouchableOpacity>
                     )}
@@ -163,13 +161,15 @@ const SignUp = ({ navigation }) => {
                 {verificationSent && (
                     <View style={styles.verificationContainer}>
                         <TextInput
-                            style={styles.input}
+                            style={styles.verificationInput}
                             placeholder="Verification Code"
+                            placeholderTextColor="#888"
                             value={verificationCode}
                             onChangeText={setVerificationCode}
+                            keyboardType="number-pad"
                         />
                         <TouchableOpacity style={styles.verifyButton} onPress={handleVerifyEmail}>
-                            <Text style={styles.verifyButtonText}>Verify Email</Text>
+                            <Text style={styles.verifyButtonText}>Verify</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -185,7 +185,7 @@ const SignUp = ({ navigation }) => {
                         }}
                         secureTextEntry={!showPassword}
                     />
-                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.inputIcon}>
                         <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} color="white" />
                     </TouchableOpacity>
                 </View>
@@ -230,14 +230,13 @@ const styles = StyleSheet.create({
     },
     logoContainer: {
         alignItems: 'center',
-        marginTop: 60,
-        marginBottom: 40,
+        marginTop: 10,
     },
-    logoText: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#01bf02',
-    },
+    logo: {
+        width: 300,
+        height: 200,
+        resizeMode: 'contain',
+      },
     formContainer: {
         paddingHorizontal: 30,
     },
@@ -245,16 +244,23 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: 'bold',
         color: 'white',
-        marginBottom: 30,
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    inputRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 16,
     },
     input: {
         backgroundColor: '#333',
         borderRadius: 8,
-        paddingVertical: 12,
+        paddingVertical: 16,
         paddingHorizontal: 16,
         color: 'white',
         fontSize: 16,
-        marginBottom: 16,
+        flex: 1,
+        marginRight: 8,
     },
     inputError: {
         borderWidth: 1,
@@ -263,6 +269,10 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        marginBottom: 16,
+    },
+    inputIcon: {
+        marginLeft: 8,
     },
     requirementsContainer: {
         marginBottom: 30,
@@ -291,10 +301,9 @@ const styles = StyleSheet.create({
     button: {
         backgroundColor: '#01bf02',
         paddingVertical: 16,
-        paddingHorizontal: 24,
         borderRadius: 8,
         alignItems: 'center',
-        marginBottom: 30,
+        marginBottom: 15,
     },
     buttonText: {
         color: 'white',
@@ -319,8 +328,17 @@ const styles = StyleSheet.create({
     verificationContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
         marginBottom: 16,
+    },
+    verificationInput: {
+        backgroundColor: '#333',
+        borderRadius: 8,
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        color: 'white',
+        fontSize: 16,
+        flex: 1,
+        marginRight: 8,
     },
     verifyButton: {
         backgroundColor: '#01bf02',
