@@ -6,13 +6,16 @@ import * as SplashScreen from 'expo-splash-screen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import LoginScreen from './LoginScreen';
-import TalentSignUp from './SignUp';
+import TalentSignUp from './TalentSignUp';
 import JobRecommendations from './sections/JobRecommendations';
 import LiveFeed from './LiveFeed';
 import ForgotPassword from './sections/ForgotPassword';
 import BottomTabNavigator from './BottomTabNavigator';
 import CustomIcon from './assets/JobJar Icon.png';
 import { Image } from 'react-native'; // Add this import
+import MessagesScreen from './sections/MessagesScreen';
+import SignUp from './SignUp';
+import ConversationScreen from './sections/ConversationScreen';
 
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -56,6 +59,16 @@ function MainTabNavigator() {
         }}
       />
       <Tab.Screen
+        name="Messages"
+        component={MessagesScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="envelope" color={color} size={size} />
+          ),
+        }}
+      />
+      
+      <Tab.Screen
         name="Recommendations"
         component={JobRecommendations}
         options={{
@@ -87,10 +100,12 @@ export default function App() {
   return (
     <NavigationContainer initialRouteName="MainTab">
       <Stack.Navigator>
-        <Stack.Screen name="SignUp" component={TalentSignUp} />
+        <Stack.Screen name="SignUp" component={SignUp} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Recommendations" component={JobRecommendations} />
+        <Stack.Screen name="ConversationScreen" component={ConversationScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+        <Stack.Screen name="TalentSignUp" component={TalentSignUp} />
         <Stack.Screen name="MainTab" component={MainTabNavigator} options={{ headerShown: false }} />
         <Stack.Screen name="MainDrawer" component={MainDrawerNavigator} options={{ headerShown: false }} />
       </Stack.Navigator>

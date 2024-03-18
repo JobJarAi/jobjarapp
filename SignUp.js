@@ -1,141 +1,118 @@
-// TalentSignUp.js for React Native
-import React, { useState, useEffect, useCallback } from 'react';
+// SignUp.js for React Native
+import React, { useState } from 'react';
 import { View, Image, TouchableOpacity, ScrollView, StyleSheet, Alert, Text, TextInput } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logo from './assets/whitelogo.png';
-import DirectResumeUpload from './DirectResumeUpload';
-import PersonalDetails from './sections/PersonalDetails';
-import SkillsSection from './sections/SkillsSection';
-import WorkHistorySection from './sections/WorkHistorySection';
-import EducationSection from './sections/EducationSection';
-import AdditionalDetails from './sections/AdditionalDetails';
-import useFormState from './hooks/useFormState';
-import JobPreferences from './sections/JobPreferences';
-import IndustriesAndJobTitles from './sections/IndustriesAndJobTitles';
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
+import { faCheck, faEye, faEyeSlash, faPaperPlane, faSquareCheck } from '@fortawesome/free-solid-svg-icons';
 
-const TalentSignUp = ({ navigation }) => {
-    const [currentSection, setCurrentSection] = useState(0);
-    const [resumeData, setResumeData] = useState(null);
-    const { formData, setFormData } = useFormState(resumeData);
-    const [email, setEmail] = useState("");
-    const [emailSent, setEmailSent] = useState(false);
-    const [isEmailValid, setIsEmailValid] = useState(null);
-    const [verificationToken, setVerificationToken] = useState('');
-    const [isTokenVerified, setIsTokenVerified] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-
-    const totalSections = 7;
-
-    useEffect(() => {
-        if (!formData.preferredLocation) {
-            setFormData({
-                ...formData,
-                preferredLocation: {
-                    preferredCity: '',
-                    preferredState: ''
-                }
-            });
-        }
-    }, [formData, setFormData]);
-
-    const goToNextSection = () => {
-        if (currentSection < totalSections - 1) {
-            console.log("Going to next section:", currentSection + 1);
-            setCurrentSection(currentSection + 1);
-        }
-    };
-
-    const goToPreviousSection = () => {
-        if (currentSection > 0) {
-            console.log("Going to previous section:", currentSection - 1);
-            setCurrentSection(currentSection - 1);
-        }
-    };
+const SignUp = ({ navigation }) => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [passwordRequirements, setPasswordRequirements] = useState({
+        length: false,
+        letter: false,
+        number: false,
+        specialChar: false,
+    });
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [verificationCode, setVerificationCode] = useState('');
+    const [emailVerified, setEmailVerified] = useState(false);
+    const [verificationSent, setVerificationSent] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [emailError, setEmailError] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [passwordError, setPasswordError] = useState(false);
 
     const validateEmail = (email) => {
-        const isValid = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/.test(email);
-        setIsEmailValid(isValid);
-        return isValid;
+        const re = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+        return re.test(String(email).toLowerCase());
     };
 
-    const handleEmailChange = (e) => {
-        const emailValue = e.nativeEvent.text;
-        setEmail(emailValue);
-        validateEmail(emailValue);
+    const validatePassword = (password) => {
+        const length = password.length >= 8;
+        const letter = /[a-zA-Z]/.test(password);
+        const number = /[0-9]/.test(password);
+        const specialChar = /[@$!%*?&]/.test(password);
+
+        setPasswordRequirements({
+            length,
+            letter,
+            number,
+            specialChar,
+        });
+
+        return length && letter && number && specialChar;
     };
 
-    const sendVerificationEmail = async () => {
-        if (!isEmailValid) {
-            console.log('Invalid email address.'); // Add this for debugging
-            setError('Invalid email address.');
-            return;
-        }
-        setLoading(true);
+    const handleSendVerificationEmail = async () => {
+        setVerificationSent(true);
+        // Send a request to your backend to send a verification code to the provided email
         try {
             const response = await axios.post(`https://jobjar.ai:3001/api/email`, { email });
             if (response.status === 200) {
-                setEmailSent(true);
-                setError(''); // Clear any previous errors
+                Alert.alert('Verification email sent', 'Please check your email for the verification code.');
             } else {
-                console.log('Failed to send verification email.'); // Add this for debugging
-                setError('Failed to send verification email.');
+                throw new Error('Failed to send verification email.');
             }
         } catch (error) {
-            console.log('Error sending verification email.', error); // Add this for debugging
-            setError('Error sending verification email.');
-        } finally {
-            setLoading(false);
+            Alert.alert('Error', error.toString());
         }
     };
-    
-    const verifyEmail = async () => {
-        setLoading(true);
+
+    const handleVerifyEmail = async () => {
         try {
-            const response = await axios.post(`https://jobjar.ai:3001/api/verify`, { email, code: verificationToken });
+            const response = await axios.post(`https://jobjar.ai:3001/api/verify`, {
+                email, code: verificationCode
+            });
             if (response.data.message === "Email verification successful") {
-                setIsTokenVerified(true);
-                setError(''); // Clear any previous errors
+                setEmailVerified(true);
+                setVerificationSent(false);
+                Alert.alert('Email verified successfully', 'You can now create your account.');
+                // Optionally, you can clear the verification code state here
+                setVerificationCode('');
             } else {
-                console.log('Verification failed.'); // Add this for debugging
-                setError('Verification failed.');
+                // Handle any message that's not a successful verification
+                throw new Error('Verification failed. Please try again.');
             }
         } catch (error) {
-            console.log('Error during verification.', error); // Add this for debugging
-            setError('Error during verification.');
-        } finally {
-            setLoading(false);
+            Alert.alert('Verification error', error.response?.data?.message || error.message);
         }
-    };    
+    };
 
-    const handleResumeUpload = useCallback((parsedData) => {
-        setResumeData(parsedData);
-        setFormData(parsedData);
-    }, [setFormData]);
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const isEmailValid = validateEmail(email);
+        const isPasswordValid = validatePassword(password);
 
-    const handleSubmit = async () => {
-        if (resumeData) {
-            const roleUrlSegment = 'jobseeker';
-            try {
-                const response = await axios.post(`https://jobjar.ai:3001/api/signup/${roleUrlSegment}`, formData);
-                if (response.status === 200 || response.status === 201) {
-                    await AsyncStorage.setItem('auth_token', response.data.token);
-                    await AsyncStorage.setItem('user_role', response.data.role);
-                    navigation.navigate('Login'); // Adjust to your home screen route
-                } else {
-                    // Handle other status codes
-                    Alert.alert('Submission Error', `An error occurred: ${response.status}`);
-                }
-            } catch (error) {
-                if (error.response && error.response.data === 'Email already exists') {
-                    Alert.alert('Email Error', 'This email address is already in use. Please use a different email or log in.');
-                } else {
-                    console.error('Error submitting resume:', error.response ? error.response.data : error);
-                    Alert.alert('Submission Error', error.response ? error.response.data : 'An error occurred during resume submission.');
-                }
-            }
+        if (!isEmailValid) {
+            setEmailError(true);
+            return;
         }
+
+        if (!isPasswordValid) {
+            setPasswordError(true);
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+
+            const lowercaseEmail = email.toLowerCase();
+            // First, create the user account
+            await axios.post(`http://localhost:3001/api/user-signup`, {
+                lowercaseEmail, password, firstName, lastName,
+            });
+
+            Alert.alert('Account created successfully', 'You can now log in with your new account.');
+
+            navigation.navigate('Login');
+        } catch (error) {
+            Alert.alert('An error occurred', error.response?.data?.error || error.message);
+        }
+        setIsLoading(false);
     };
 
     const userLogin = () => {
@@ -143,317 +120,219 @@ const TalentSignUp = ({ navigation }) => {
     };
 
     return (
-        <>
-            {currentSection !== 6 ? (
-                <ScrollView style={styles.container}>
-                    <View style={styles.logoContainer}>
-                        <Image source={Logo} style={styles.logo} />
-                    </View>
-                    <View style={styles.formContainer}>
-                        {!isTokenVerified ? (
-                            <>
-                                <TextInput
-                                    style={[styles.input, isEmailValid === false ? styles.inputError : isEmailValid ? styles.inputSuccess : null]}
-                                    onChange={handleEmailChange}
-                                    value={email}
-                                    placeholder="Enter email"
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                />
-                                <TouchableOpacity
-                                    style={styles.button}
-                                    onPress={sendVerificationEmail}
-                                    disabled={loading || !isEmailValid}
-                                >
-                                    <Text style={styles.buttonText}>Send Verification Email</Text>
-                                </TouchableOpacity>
-
-                                {emailSent && (
-                                    <>
-                                        <TextInput
-                                            style={styles.input}
-                                            onChangeText={setVerificationToken}
-                                            value={verificationToken}
-                                            placeholder="Enter verification code"
-                                        />
-                                        <TouchableOpacity
-                                            style={styles.button}
-                                            onPress={verifyEmail}
-                                            disabled={loading}
-                                        >
-                                            <Text style={styles.buttonText}>Verify</Text>
-                                        </TouchableOpacity>
-                                    </>
-                                )}
-                                {error ? <Text style={styles.errorMessage}>{error}</Text> : null}
-                            </>
-                        ) : (
-                            <>
-                                {resumeData && (
-                                    <>
-                                        {currentSection === 0 && <PersonalDetails formData={formData} setFormData={setFormData} />}
-                                        {currentSection === 1 && formData.skillLevels && (
-                                            <SkillsSection
-                                                initialSkills={formData.skillLevels}
-                                                setSkills={(skills) => setFormData({ ...formData, skillLevels: skills })}
-                                            />
-                                        )}
-                                        {currentSection === 2 && <WorkHistorySection formData={formData} setFormData={setFormData} />}
-                                        {currentSection === 3 && <EducationSection formData={formData} setFormData={setFormData} />}
-                                        {currentSection === 4 && <AdditionalDetails formData={formData} setFormData={setFormData} />}
-                                        {currentSection === 5 && <JobPreferences formData={formData} setFormData={setFormData} />}
-                                        <NavigationButtons currentSection={currentSection} totalSections={totalSections} goToPreviousSection={goToPreviousSection} goToNextSection={goToNextSection} handleSubmit={handleSubmit} />
-                                    </>
-                                )}
-                                {!resumeData && (
-                                    <DirectResumeUpload onUploadSuccess={handleResumeUpload} />
-                                )}
-                            </>
-                        )}
-                        <View style={styles.loginContainer}>
-                            <Text style={styles.loginText}>Already have an account?</Text>
-                            <TouchableOpacity onPress={userLogin} style={styles.loginButton}>
-                                <Text style={styles.loginButtonText}>Login</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </ScrollView>
-            ) : (
-                <View style={styles.container}>
-                    <View style={styles.logoContainer}>
-                        <Image source={Logo} style={styles.logo} />
-                    </View>
-                    <View style={styles.formContainer}>
-                        {resumeData && (
-                            <>
-                                <IndustriesAndJobTitles formData={formData} setFormData={setFormData} />
-                                <NavigationButtons currentSection={currentSection} totalSections={totalSections} goToPreviousSection={goToPreviousSection} goToNextSection={goToNextSection} handleSubmit={handleSubmit} />
-                            </>
-                        )}
-                    </View>
+        <ScrollView style={styles.container}>
+            <View style={styles.logoContainer}>
+                <Text style={styles.logoText}>JobJar.Ai</Text>
+            </View>
+            <View style={styles.formContainer}>
+                <Text style={styles.heading}>Sign Up</Text>
+                <TextInput
+                    style={styles.input}
+                    placeholder="First Name"
+                    placeholderTextColor="#888"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Last Name"
+                    placeholderTextColor="#888"
+                    value={lastName}
+                    onChangeText={setLastName}
+                />
+                <View style={styles.inputContainer}>
+                    <TextInput
+                        style={[styles.input, emailError && styles.inputError]}
+                        placeholder="Email"
+                        placeholderTextColor="#888"
+                        value={email}
+                        onChangeText={(text) => {
+                            setEmail(text);
+                            setEmailError(!validateEmail(text));
+                        }}
+                        editable={!emailVerified}
+                    />
+                    {emailVerified ? (
+                        <FontAwesomeIcon icon={faSquareCheck} color="green" />
+                    ) : (
+                        <TouchableOpacity onPress={handleSendVerificationEmail}>
+                            <FontAwesomeIcon icon={faPaperPlane} color="#01bf02" />
+                        </TouchableOpacity>
+                    )}
                 </View>
-            )}
-        </>
+                {verificationSent && (
+                    <View style={styles.verificationContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Verification Code"
+                            value={verificationCode}
+                            onChangeText={setVerificationCode}
+                        />
+                        <TouchableOpacity style={styles.verifyButton} onPress={handleVerifyEmail}>
+                            <Text style={styles.verifyButtonText}>Verify Email</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+                <View style={styles.inputContainer}>
+                    <TextInput
+                        style={[styles.input, passwordError && styles.inputError]}
+                        placeholder="Password"
+                        placeholderTextColor="#888"
+                        value={password}
+                        onChangeText={(text) => {
+                            setPassword(text);
+                            setPasswordError(!validatePassword(text));
+                        }}
+                        secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                        <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} color="white" />
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.requirementsContainer}>
+                    <Text style={styles.requirementsHeader}>Password Requirements:</Text>
+                    {Object.entries(passwordRequirements).map(([key, value]) => (
+                        <View key={key} style={styles.requirementItem}>
+                            <FontAwesomeIcon
+                                icon={faCheck}
+                                color={value ? '#01bf02' : '#888'}
+                                style={styles.requirementIcon}
+                            />
+                            <Text style={[styles.requirementText, value && styles.requirementMet]}>
+                                {key === 'length' && '8 Characters'}
+                                {key === 'letter' && 'Text'}
+                                {key === 'number' && '1+ Numbers'}
+                                {key === 'specialChar' && 'Special Character'}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
+                {emailVerified && (
+                    <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading}>
+                        <Text style={styles.buttonText}>{isLoading ? 'Creating Account...' : 'Create Account'}</Text>
+                    </TouchableOpacity>
+                )}
+                <View style={styles.loginContainer}>
+                    <Text style={styles.loginText}>Already have an account?</Text>
+                    <TouchableOpacity onPress={userLogin} style={styles.loginButton}>
+                        <Text style={styles.loginButtonText}>Login</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </ScrollView>
     );
 };
-
-// NavigationButtons.js
-const NavigationButtons = ({ currentSection, totalSections, goToPreviousSection, goToNextSection, handleSubmit }) => (
-    <View style={styles.navigationButtons}>
-        {currentSection > 0 && (
-            <TouchableOpacity onPress={goToPreviousSection}>
-                <Text style={styles.navigationText}>Previous</Text>
-            </TouchableOpacity>
-        )}
-
-        {currentSection < totalSections - 1 && (
-            <TouchableOpacity onPress={goToNextSection}>
-                <Text style={styles.navigationText}>Next</Text>
-            </TouchableOpacity>
-        )}
-
-        {currentSection === totalSections - 1 && (
-            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-                <Text style={styles.buttonText}>Submit</Text>
-            </TouchableOpacity>
-        )}
-    </View>
-);
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000',
+        backgroundColor: '#1a1a1a',
     },
     logoContainer: {
         alignItems: 'center',
-        marginTop: 30,
-        marginBottom: 30,
+        marginTop: 60,
+        marginBottom: 40,
     },
-    logo: {
-        width: 300,
-        height: 65,
-        resizeMode: 'contain',
+    logoText: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#01bf02',
     },
     formContainer: {
-        paddingHorizontal: 20,
-    },
-    resumeContainer: {
-        paddingVertical: 30,
+        paddingHorizontal: 30,
     },
     heading: {
-        fontSize: 22,
-        fontWeight: '600',
-        color: '#333',
-        marginVertical: 15,
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: 'white',
+        marginBottom: 30,
     },
     input: {
-        borderWidth: 1,
-        borderColor: '#ccc',
-        padding: 12,
+        backgroundColor: '#333',
         borderRadius: 8,
-        marginBottom: 12,
-        marginTop: 50,
-        backgroundColor: '#fff',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        color: 'white',
         fontSize: 16,
+        marginBottom: 16,
+    },
+    inputError: {
+        borderWidth: 1,
+        borderColor: 'red',
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    requirementsContainer: {
+        marginBottom: 30,
+    },
+    requirementsHeader: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 16,
+        marginBottom: 10,
+    },
+    requirementItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    requirementIcon: {
+        marginRight: 8,
+    },
+    requirementText: {
+        color: '#888',
+        fontSize: 14,
+    },
+    requirementMet: {
+        color: '#01bf02',
     },
     button: {
         backgroundColor: '#01bf02',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
         borderRadius: 8,
         alignItems: 'center',
-        marginTop: 5,
+        marginBottom: 30,
     },
     buttonText: {
-        color: '#ffffff',
+        color: 'white',
         fontSize: 18,
         fontWeight: 'bold',
     },
-    skillsContainer: {
-        marginTop: 15,
-        marginBottom: 15,
-    },
-    skillItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 10,
-        padding: 10,
-        borderWidth: 1,
-        borderColor: 'gray',
-        borderRadius: 5,
-    },
-    skillLabel: {
-        fontWeight: 'bold',
-        color: '#fff'
-    },
-    skillLevel: {
-        fontStyle: 'italic',
-        color: '#fff'
-    },
-    workHistoryContainer: {
-        marginTop: 15,
-        marginBottom: 15,
-    },
-    jobItem: {
-        marginBottom: 10,
-        padding: 10,
-        borderWidth: 1,
-        borderColor: 'gray',
-        borderRadius: 5,
-    },
-    jobTitle: {
-        fontWeight: 'bold',
-        color: '#fff',
-    },
-    jobDetails: {
-        color: '#fff',
-        fontStyle: 'italic',
-    },
-    navigationButtons: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 10,
-    },
-    navigationText: {
-        fontSize: 16,
-        color: '#01bf02',
-        fontWeight: 'bold',
-    },
-    educationContainer: {
-        marginTop: 15,
-        marginBottom: 15,
-    },
-    educationItem: {
-        marginBottom: 10,
-        padding: 10,
-        borderWidth: 1,
-        borderColor: 'gray',
-        borderRadius: 5,
-    },
-    errorMessage: {
-        color: 'red',
-        textAlign: 'center',
-        fontSize: 16, // Ensure font size is adequate
-        marginTop: 10,
-        marginBottom: 20,
-    },    
-    educationInstitution: {
-        fontWeight: 'bold',
-        color: '#fff',
-    },
-    educationDetails: {
-        color: '#fff',
-        fontStyle: 'italic',
-    },
-    profileItem: {
-        marginBottom: 10,
-    },
-    experienceItem: {
-        marginBottom: 10,
-    },
-    certificationItem: {
-        marginBottom: 10,
-    },
-    softwareItem: {
-        marginBottom: 10,
-    },
-    trainingItem: {
-        marginBottom: 10,
-    },
-    endorsementItem: {
-        marginBottom: 10,
-    },
-    awardItem: {
-        marginBottom: 10,
-    },
-    publicationItem: {
-        marginBottom: 10,
-    },
-    itemText: {
-        color: '#fff',
-        marginBottom: 5,
-    },
-    label: {
-        fontWeight: 'bold',
-        color: '#fff',
-        marginBottom: 5,
-    },
-    box: {
-        backgroundColor: 'white',
-        borderRadius: 20,
-        padding: 16,
-        marginBottom: 20,
-    },
-    heading: {
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    formGroup: {
-        marginTop: 10,
-    },
-    formContainer: {
-        paddingHorizontal: 20,
-        flex: 1,
-    },
     loginContainer: {
-        marginTop: 50,
         alignItems: 'center',
     },
     loginText: {
-        color: '#fff',
+        color: 'white',
         fontSize: 16,
     },
     loginButton: {
         marginTop: 10,
-        alignItems: 'center',
     },
     loginButtonText: {
-        color: '#ffffff',
+        color: '#01bf02',
         fontSize: 18,
+        fontWeight: 'bold',
+    },
+    verificationContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    verifyButton: {
+        backgroundColor: '#01bf02',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+    },
+    verifyButtonText: {
+        color: 'white',
+        fontSize: 16,
         fontWeight: 'bold',
     },
 });
 
-export default TalentSignUp;
+export default SignUp;
