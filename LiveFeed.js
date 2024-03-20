@@ -7,14 +7,16 @@ import {
     TouchableOpacity,
     Button,
     ActivityIndicator,
-    StyleSheet
+    StyleSheet,
+    ScrollView
 } from 'react-native';
 import axios from 'axios';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faHeart, faSquareCheck, faFlag } from '@fortawesome/free-solid-svg-icons';
+import { faHeart, faSquareCheck, faFlag, faEllipsisV } from '@fortawesome/free-solid-svg-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DefaultTheme, TextInput } from 'react-native-paper';
 import OriginalPostForm from './components/OriginalPostForm';
+import ConnectUserButton from './components/ConnectUserButton';
 
 const ResponsiveImage = ({ source, borderRadius, ...props }) => {
     const [size, setSize] = useState({ width: undefined, height: undefined });
@@ -51,6 +53,7 @@ const LiveFeed = () => {
     const [isApplying, setIsApplying] = useState(false);
     const [isCommenting, setIsCommenting] = useState(false);
     const [isReviewing, setIsReviewing] = useState(false);
+    const [visibleMenuId, setVisibleMenuId] = useState(null);
     const [hasMore, setHasMore] = useState(true);
     const [comments, setComments] = useState({});
     const [currentUser, setCurrentUser] = useState(null);
@@ -61,7 +64,7 @@ const LiveFeed = () => {
     const fetchUserId = async () => {
         try {
             const authToken = await AsyncStorage.getItem('auth_token');
-            const response = await axios.get('http://localhost:3001/api/user/details', {
+            const response = await axios.get('https://jobjar.ai:3001/api/user/details', {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
             setCurrentUser(response.data.userId); // This will trigger a re-render
@@ -77,7 +80,7 @@ const LiveFeed = () => {
         const token = await AsyncStorage.getItem('auth_token');
 
         try {
-            const response = await axios.get(`http://localhost:3001/api/posts?page=${page}&perPage=${itemsPerPage}`, {
+            const response = await axios.get(`https://jobjar.ai:3001/api/posts?page=${page}&perPage=${itemsPerPage}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -144,16 +147,16 @@ const LiveFeed = () => {
         roundness: 20, // This will set the borderRadius for all react-native-paper components
         colors: {
             ...DefaultTheme.colors,
-            primary: '#118AB2',
+            primary: '#02bf01',
             underlineColor: 'transparent', // This should remove the underline or line at the bottom
-            background: '#fff',
+            background: '#000',
         },
     };
 
     const refreshRepost = async (repostId) => {
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            const response = await axios.get(`http://localhost:3001/api/posts/${repostId}`, {
+            const response = await axios.get(`https://jobjar.ai:3001/api/posts/${repostId}`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -173,11 +176,11 @@ const LiveFeed = () => {
         }
     };
 
-    const handleModerateRepost = async (repostId) => {
+    const handleModerateRepost = async (postId) => {
         setIsReviewing(true);
         try {
             const authToken = await AsyncStorage.getItem('auth_token');
-            const response = await axios.post(`http://localhost:3001/api/moderate/${repostId}`, {}, {
+            const response = await axios.post(`https://jobjar.ai:3001/api/check-post/${postId}`, {}, {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
 
@@ -185,13 +188,17 @@ const LiveFeed = () => {
             if (response.status === 201) {
                 await refreshFeed(); // Call refreshFeed if a repost is deleted
             } else {
-                await refreshRepost(repostId); // Otherwise, refresh the repost
+                await refreshRepost(postId); // Otherwise, refresh the repost
             }
         } catch (error) {
             console.error('Error moderating repost:', error);
             // Handle errors
         }
         setIsReviewing(false);
+    };
+
+    const handleShowMenu = (itemId) => {
+        setVisibleMenuId(visibleMenuId === itemId ? null : itemId);
     };
 
     const handleApply = async (jobId) => {
@@ -202,7 +209,7 @@ const LiveFeed = () => {
             const authToken = await AsyncStorage.getItem('auth_token');
             console.log('Got auth token:', authToken); // Check if authToken is retrieved
 
-            const response = await axios.post(`http://localhost:3001/api/apply`, { jobId }, {
+            const response = await axios.post(`https://jobjar.ai:3001/api/apply`, { jobId }, {
                 headers: { Authorization: `Bearer ${authToken}` }
             });
 
@@ -251,7 +258,7 @@ const LiveFeed = () => {
         try {
             const authToken = await AsyncStorage.getItem('auth_token');
 
-            await axios.post(`http://localhost:3001/api/posts/${repostId}/comment`, {
+            await axios.post(`https://jobjar.ai:3001/api/posts/${repostId}/comment`, {
                 comment: commentText,
             }, {
                 headers: { 'Authorization': `Bearer ${authToken}` }
@@ -270,11 +277,11 @@ const LiveFeed = () => {
             const isLiked = commentLikes[commentId] || false;
             const token = await AsyncStorage.getItem('auth_token');
             if (isLiked) {
-                await axios.put(`http://localhost:3001/api/posts/${postId}/comments/${commentId}/unlike`, {}, {
+                await axios.put(`https://jobjar.ai:3001/api/posts/${postId}/comments/${commentId}/unlike`, {}, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             } else {
-                await axios.put(`http://localhost:3001/api/posts/${postId}/comments/${commentId}/like`, {}, {
+                await axios.put(`https://jobjar.ai:3001/api/posts/${postId}/comments/${commentId}/like`, {}, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             }
@@ -296,7 +303,7 @@ const LiveFeed = () => {
 
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            await axios.post(`http://localhost:3001/api/posts/${postId}/like`, {}, {
+            await axios.post(`https://jobjar.ai:3001/api/posts/${postId}/like`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         } catch (error) {
@@ -318,7 +325,7 @@ const LiveFeed = () => {
 
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            await axios.delete(`http://localhost:3001/api/posts/${postId}/unlike`, {
+            await axios.delete(`https://jobjar.ai:3001/api/posts/${postId}/unlike`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         } catch (error) {
@@ -351,6 +358,37 @@ const LiveFeed = () => {
                     {item.firstName} {item.lastName}
                 </Text>
                 <View style={styles.moderationIconContainer}>
+                    <TouchableOpacity onPress={() => handleShowMenu(item._id)}>
+                        <FontAwesomeIcon icon={faEllipsisV} size={14} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+                {visibleMenuId === item._id && (
+                    <View style={styles.menu}>
+                        {/* Check if the post is already determined as 'Good'. If not, show the Moderate option. */}
+                        {item.moderationInfo && item.moderationInfo.determination !== 'Good' && (
+                            <TouchableOpacity
+                                style={[styles.menuItem, isReviewing && styles.disabledModerationButton]}
+                                onPress={() => {
+                                    handleModerateRepost(item._id);
+                                    setVisibleMenuId(null);
+                                }}
+                                disabled={isReviewing}
+                            >
+                                {isReviewing ? (
+                                    <ActivityIndicator size="small" color="#EF476F" />
+                                ) : (
+                                    <>
+                                        <FontAwesomeIcon icon={faFlag} size={14} color="#FFFF00" />
+                                        <Text style={styles.menuItemText}>Flag Post</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        )}
+                        <ConnectUserButton targetUserId={item.userId} />
+                    </View>
+                )}
+
+                {/* <View style={styles.moderationIconContainer}>
                     {
                         item.moderationInfo.determination === 'Good' ? (
                             <FontAwesomeIcon size={24} color='#01BF02' icon={faSquareCheck} />
@@ -363,12 +401,13 @@ const LiveFeed = () => {
                                 {isReviewing ? (
                                     <ActivityIndicator size="small" color="#EF476F" />
                                 ) : (
-                                    <FontAwesomeIcon icon={faFlag} size={24} color="#EF476F" />
+                                    <Text style={styles.menuItemText}>Moderate Repost</Text>
+                                    <FontAwesomeIcon icon={faFlag} size={14} color="#FFFF00" />
                                 )}
                             </TouchableOpacity>
                         )
                     }
-                </View>
+                </View> */}
             </View>
 
             {/* Content based on Type */}
@@ -426,7 +465,7 @@ const LiveFeed = () => {
                     {item.comments && item.comments.length > 0 && (
                         <>
                             <Text style={styles.commentsHeading}>Comments</Text>
-                            <View style={styles.commentsContainer}>
+                            <ScrollView style={styles.commentsContainer}>
                                 {item.comments.map((comment, index) => (
                                     <View style={styles.commentItem} key={comment._id}>
                                         {/* Profile Picture next to Comment */}
@@ -459,23 +498,23 @@ const LiveFeed = () => {
                                             {/* Assuming you have a mechanism to keep track of like count */}
                                             <Text style={styles.likeCount}>{commentLikes[comment._id] || 0}</Text>
                                         </TouchableOpacity>
-
                                     </View>
                                 ))}
-                            </View>
+                            </ScrollView>
                         </>
                     )}
 
                     {/* Comment Input */}
                     <View style={styles.commentInputContainer}>
                         <TextInput
-                            mode="outlined" // Set mode to outlined which applies a border
+                            mode="outlined"
                             style={styles.commentInput}
                             value={comments[item._id] || ''}
                             onChangeText={(text) => handleCommentChange(item._id, text)}
                             placeholder="Add a comment"
-                            theme={theme} // Apply the custom theme
-                        // ... other props
+                            placeholderTextColor="#999"
+                            theme={theme}
+                            textColor="#fff"
                         />
                         <TouchableOpacity
                             style={styles.postCommentButton}
@@ -544,11 +583,8 @@ const styles = StyleSheet.create({
         backgroundColor: "black",
     },
     itemContainer: {
-        borderWidth: 1,
-        backgroundColor: "white",
-        borderColor: '#ccc',
-        borderRadius: 10,
-        padding: 10,
+        backgroundColor: "black",
+        padding: 5,
         marginBottom: 20,
     },
     profileSection: {
@@ -564,20 +600,21 @@ const styles = StyleSheet.create({
     },
     name: {
         fontSize: 16,
+        color: 'white',
         fontWeight: 'bold',
     },
     timeText: {
         fontSize: 14,
-        color: 'gray',
+        color: 'white',
     },
     likes: {
         fontSize: 14,
-        color: 'black',
+        color: 'white',
         margin: 5,
     },
     content: {
         fontSize: 18,
-        color: 'black',
+        color: 'white',
         marginBottom: 5,
     },
     jobContentContainer: {
@@ -587,14 +624,11 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     postImageContainer: {
-        borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 10,
         padding: 10,
         marginBottom: 10,
         alignItems: 'center', // Center the items horizontally
         justifyContent: 'center', // Center the items vertically
-        backgroundColor: 'white',
+        backgroundColor: 'black',
     },
     postImage: {
         width: '100%',
@@ -618,10 +652,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     avatarPlaceholder: {
-        width: 50,
-        height: 50,
+        width: 30,
+        height: 30,
+        borderRadius: 15,
         marginRight: 10,
-        borderRadius: 25,
         backgroundColor: '#ccc',
         justifyContent: 'center',
         alignItems: 'center',
@@ -670,12 +704,13 @@ const styles = StyleSheet.create({
     },
     commentsHeading: {
         fontWeight: 'bold',
+        color: 'white',
         marginBottom: 5,
         fontSize: 16,
         marginTop: 10,
     },
     commentsContainer: {
-        maxHeight: 200,
+        maxHeight: 250,
         overflow: 'scroll',
     },
     commentProfilePic: {
@@ -690,7 +725,7 @@ const styles = StyleSheet.create({
     },
     commentItem: {
         flexDirection: 'row',
-        backgroundColor: '#f0f0f0',
+        backgroundColor: '#000',
         borderRadius: 5,
         padding: 10, // Increased padding for more space inside the comment block
         marginBottom: 10, // Increased space between comments
@@ -698,10 +733,11 @@ const styles = StyleSheet.create({
     },
     commentAuthor: {
         fontWeight: 'bold',
+        color: '#FFF',
         marginBottom: 4, // Space between author name and comment text
     },
     commentText: {
-        color: '#333',
+        color: '#f0f0f0',
     },
     commentInputContainer: {
         flexDirection: 'row',
@@ -710,13 +746,14 @@ const styles = StyleSheet.create({
     },
     commentInput: {
         flex: 1,
+        backgroundColor: '#000',
         marginRight: 5,
-        paddingHorizontal: 10, // Inner spacing for the text
-        paddingVertical: 5, // Adjust this for your preferred height
-        height: 40, // Aligns height with the 'Post' button
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        height: 40,
     },
     postCommentButton: {
-        backgroundColor: '#118AB2',
+        backgroundColor: '#02bf10',
         paddingVertical: 10, // Adjust vertical padding to match the input field height
         paddingHorizontal: 20, // Horizontal padding for the button text
         borderRadius: 20, // Match the borderRadius of the input field
@@ -730,5 +767,34 @@ const styles = StyleSheet.create({
     },
     likeCommentButton: {
         // Add styling for the like button, e.g. padding, margin
+    },
+    menu: {
+        position: 'relative',
+        top: 25, // Adjust if you want some space from the top
+        right: 10, // Adjust to move closer to the ellipsis icon
+        backgroundColor: '#f0f0f0',
+        borderRadius: 5,
+        padding: 10,
+        elevation: 10,
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        shadowColor: '#000',
+        shadowOffset: { height: 1, width: 0 },
+        zIndex: 10, // Ensure this is greater than the post content
+    },
+    menuItem: {
+        paddingVertical: 10,
+        paddingHorizontal: 20, // Add some horizontal padding for better touch targets
+        flexDirection: 'row', // Align icon and text in a row
+        alignItems: 'center', // Center items vertically in the row
+        justifyContent: 'flex-start', // Align items to the start of the row
+        backgroundColor: 'white', // Or any other color you prefer
+        marginBottom: 5, // Add some margin between menu items
+        borderRadius: 5, // Optional: if you want rounded corners for menu items
+    },
+    menuItemText: {
+        fontSize: 16,
+        color: '#000',
+        marginLeft: 10, // Add space between the icon and text
     },
 });

@@ -19,7 +19,7 @@ const ConversationScreen = ({ route }) => {
 
             socket.on('connect_error', (err) => {
                 console.log(`Connect Error: ${err.message}`);
-            });
+            }); 
         }
     }, [socket]);
 
@@ -127,7 +127,7 @@ const ConversationScreen = ({ route }) => {
         try {
             const token = await AsyncStorage.getItem('auth_token');
             // Make sure to include authorization headers if your API requires
-            await axios.post('http://localhost:3001/api/messages/markAsRead', {
+            await axios.post('https://jobjar.ai:3001/api/messages/markAsRead', {
                 roomName,
             }, {
                 headers: {

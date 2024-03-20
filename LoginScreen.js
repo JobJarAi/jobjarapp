@@ -20,7 +20,7 @@ const Login = () => {
     try {
       const lowercaseEmail = email.toLowerCase();
 
-      const response = await axios.post(`http://localhost:3001/api/user-login`, { lowercaseEmail, password });
+      const response = await axios.post(`https://jobjar.ai:3001/api/user-login`, { lowercaseEmail, password });
       const { token } = response.data;
 
       await AsyncStorage.setItem('auth_token', token);
@@ -43,7 +43,7 @@ const Login = () => {
 
   const handleReferral = async (token, jobId) => {
     try {
-      await axios.post(`http://localhost:3001/api/referrals`, {
+      await axios.post(`https://jobjar.ai:3001/api/referrals`, {
         jobId,
         referralId: await AsyncStorage.getItem('referralId'),
       }, {
@@ -127,17 +127,19 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
+    marginTop: 10,
   },
   logo: {
     width: 300,
-    height: 200,
+    height: 75,
     resizeMode: 'contain',
   },
   heading: {
     fontSize: 28,
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 90,
+    marginBottom: 35,
+    marginTop: 35,
     textAlign: 'center',
   },
   form: {
@@ -191,14 +193,16 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    marginBottom: 100,
+    marginBottom: 150,
   },
   footerText: {
     color: 'white',
     fontSize: 16,
+    marginBottom: 100,
   },
   signupLink: {
     color: '#01bf02',
+    fontSize: 18,
     fontWeight: 'bold',
   },
 });

@@ -96,7 +96,7 @@ const SignUp = ({ navigation }) => {
             setIsLoading(true);
 
             const lowercaseEmail = email.toLowerCase();
-            await axios.post(`http://localhost:3001/api/user-signup`, {
+            await axios.post(`https://jobjar.ai:3001/api/user-signup`, {
                 lowercaseEmail, password, firstName, lastName,
             });
 
@@ -119,7 +119,6 @@ const SignUp = ({ navigation }) => {
                 <Image source={Logo} style={styles.logo} />
             </View>
             <View style={styles.formContainer}>
-                <Text style={styles.heading}>Sign Up</Text>
                 <View style={styles.inputRow}>
                     <TextInput
                         style={styles.input}
@@ -234,18 +233,12 @@ const styles = StyleSheet.create({
     },
     logo: {
         width: 300,
-        height: 200,
+        height: 75,
         resizeMode: 'contain',
       },
     formContainer: {
+        marginTop: 30,
         paddingHorizontal: 30,
-    },
-    heading: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: 'white',
-        marginBottom: 15,
-        textAlign: 'center',
     },
     inputRow: {
         flexDirection: 'row',
@@ -311,6 +304,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     loginContainer: {
+        marginTop: 60,
         alignItems: 'center',
     },
     loginText: {

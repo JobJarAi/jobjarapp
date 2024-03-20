@@ -17,7 +17,7 @@ const MessagesScreen = ({ navigation }) => {
       const fetchMessages = async () => {
         try {
           const token = await AsyncStorage.getItem('auth_token');
-          const response = await axios.get('http://localhost:3001/api/connectionIds', {
+          const response = await axios.get('https://jobjar.ai:3001/api/connectionIds', {
             headers: { Authorization: `Bearer ${token}` },
           });
           const data = response.data;
@@ -42,7 +42,7 @@ const MessagesScreen = ({ navigation }) => {
   const fetchUnreadCounts = async () => {
     try {
       const token = await AsyncStorage.getItem('auth_token');
-      const response = await axios.get('http://localhost:3001/api/user/unreadCounts', {
+      const response = await axios.get('https://jobjar.ai:3001/api/user/unreadCounts', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUnreadCounts(response.data.unreadCounts);
@@ -54,7 +54,7 @@ const MessagesScreen = ({ navigation }) => {
   const fetchNewMessages = async () => {
     try {
       const token = await AsyncStorage.getItem('auth_token');
-      const response = await axios.get('http://localhost:3001/api/connectionIds', {
+      const response = await axios.get('https://jobjar.ai:3001/api/connectionIds', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = response.data;
