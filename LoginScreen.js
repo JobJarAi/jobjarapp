@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Image, TouchableOpacity, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { Dimensions, View, Text, TextInput, Image, TouchableOpacity, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+
+const { width, height } = Dimensions.get('window');
 
 const Login = () => {
   const navigation = useNavigation();
@@ -20,7 +22,7 @@ const Login = () => {
     try {
       const lowercaseEmail = email.toLowerCase();
 
-      const response = await axios.post(`http://localhost:3001/api/user-login`, { lowercaseEmail, password });
+      const response = await axios.post(`https://jobjar.ai:3001/api/user-login`, { lowercaseEmail, password });
       const { token } = response.data;
       const id = response.data.id;
       console.log('response', response.data.id);
@@ -46,7 +48,7 @@ const Login = () => {
 
   const handleReferral = async (token, jobId) => {
     try {
-      await axios.post(`http://localhost:3001/api/referrals`, {
+      await axios.post(`https://jobjar.ai:3001/api/referrals`, {
         jobId,
         referralId: await AsyncStorage.getItem('referralId'),
       }, {
@@ -122,90 +124,92 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a1a',
-    paddingHorizontal: 30,
+    paddingHorizontal: width * 0.05,
   },
   contentContainer: {
     flex: 1,
-    justifyContent: 'top',
+    justifyContent: 'center', // Changed to center
+    alignItems: 'center', // Added alignment
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: height * 0.03,
   },
   logo: {
-    width: 300,
-    height: 75,
+    width: width * 0.8,
+    height: height * 0.2,
     resizeMode: 'contain',
   },
   heading: {
-    fontSize: 28,
+    fontSize: width * 0.08,
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 35,
-    marginTop: 35,
+    marginBottom: height * 0.02,
+    marginTop: height * 0.02,
     textAlign: 'center',
   },
   form: {
-    marginBottom: 20,
+    marginBottom: height * 0.03,
+    width: '80%', // Added width constraint
   },
   input: {
     backgroundColor: '#333',
     borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: height * 0.02,
+    paddingHorizontal: width * 0.04,
     color: 'white',
-    fontSize: 16,
-    marginBottom: 16,
+    fontSize: width * 0.04,
+    marginBottom: height * 0.02,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: height * 0.02,
   },
   passwordInput: {
     flex: 1,
     backgroundColor: '#333',
     borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: height * 0.02,
+    paddingHorizontal: width * 0.04,
     color: 'white',
-    fontSize: 16,
+    fontSize: width * 0.04,
   },
   showButton: {
-    marginLeft: 10,
-    paddingHorizontal: 10,
+    marginLeft: width * 0.03,
+    paddingHorizontal: width * 0.03,
   },
   forgotButton: {
     alignSelf: 'flex-end',
-    marginBottom: 20,
+    marginBottom: height * 0.03,
   },
   forgotButtonText: {
     color: '#01bf02',
-    fontSize: 16,
+    fontSize: width * 0.04,
   },
   button: {
     backgroundColor: '#01bf02',
-    paddingVertical: 16,
+    paddingVertical: height * 0.02,
     borderRadius: 8,
     alignItems: 'center',
   },
   buttonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: width * 0.05,
     fontWeight: 'bold',
   },
   footer: {
     alignItems: 'center',
-    marginBottom: 150,
+    marginBottom: height * 0.1, // Reduced margin
   },
   footerText: {
     color: 'white',
-    fontSize: 16,
-    marginBottom: 100,
+    fontSize: width * 0.04,
+    marginBottom: height * 0.05, // Reduced margin
   },
   signupLink: {
     color: '#01bf02',
-    fontSize: 18,
+    fontSize: width * 0.05,
     fontWeight: 'bold',
   },
 });
