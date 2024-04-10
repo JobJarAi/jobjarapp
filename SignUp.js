@@ -48,7 +48,7 @@ const SignUp = ({ navigation }) => {
     const handleSendVerificationEmail = async () => {
         setVerificationSent(true);
         try {
-            const response = await axios.post(`http://localhost:3001/api/email`, { email });
+            const response = await axios.post(`https://jobjar.ai:3001/api/email`, { email });
             if (response.status === 200) {
                 Alert.alert('Verification email sent', 'Please check your email for the verification code.');
             } else {
@@ -61,7 +61,7 @@ const SignUp = ({ navigation }) => {
 
     const handleVerifyEmail = async () => {
         try {
-            const response = await axios.post(`http://localhost:3001/api/verify`, {
+            const response = await axios.post(`https://jobjar.ai:3001/api/verify`, {
                 email, code: verificationCode
             });
             if (response.data.message === "Email verification successful") {
@@ -96,7 +96,7 @@ const SignUp = ({ navigation }) => {
             setIsLoading(true);
 
             const lowercaseEmail = email.toLowerCase();
-            await axios.post(`http://localhost:3001/api/user-signup`, {
+            await axios.post(`https://jobjar.ai:3001/api/user-signup`, {
                 lowercaseEmail, password, firstName, lastName,
             });
 

@@ -137,7 +137,7 @@ const ConversationScreen = ({ route }) => {
             });
 
             try {
-                const uploadResponse = await axios.post('http://localhost:3001/api/project/upload', formData, {
+                const uploadResponse = await axios.post('https://jobjar.ai:3001/api/project/upload', formData, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         'Content-Type': 'multipart/form-data',
@@ -178,7 +178,7 @@ const ConversationScreen = ({ route }) => {
     const markMessagesAsRead = async () => {
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            await axios.post('http://localhost:3001/api/messages/markAsRead', {
+            await axios.post('https://jobjar.ai:3001/api/messages/markAsRead', {
                 roomName,
             }, {
                 headers: {

@@ -122,7 +122,7 @@ const DirectResumeUpload = ({ onUploadSuccess }) => {
 
         try {
             // Post the formData to the server
-            const response = await axios.post('http://localhost:3001/api/mobile/process_resume', formData, {
+            const response = await axios.post('https://jobjar.ai:3001/api/mobile/process_resume', formData, {
                 headers: {
                     // Content-Type header is set automatically by axios, including the boundary parameter
                 },

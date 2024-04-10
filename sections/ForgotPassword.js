@@ -41,7 +41,7 @@ const ForgotPassword = () => {
 
         setLoading(true);
         try {
-            const response = await axios.post(`http://localhost:3001/api/email`, {
+            const response = await axios.post(`https://jobjar.ai:3001/api/email`, {
                 email: email
             });
 
@@ -60,7 +60,7 @@ const ForgotPassword = () => {
     const verifyEmail = async () => {
         setLoading(true);
         try {
-            const response = await axios.post(`http://localhost:3001/api/verify`, {
+            const response = await axios.post(`https://jobjar.ai:3001/api/verify`, {
                 email: email,
                 code: verificationToken
             });
@@ -85,7 +85,7 @@ const ForgotPassword = () => {
 
         setLoading(true);
         try {
-            const response = await axios.put(`http://localhost:3001/api/reset-password`, {
+            const response = await axios.put(`https://jobjar.ai:3001/api/reset-password`, {
                 email: email,
                 newPassword: newPassword
             });
