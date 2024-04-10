@@ -1,16 +1,19 @@
 // sections/ConversationScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, FlatList, StyleSheet, Platform, Image, TouchableOpacity } from 'react-native';
 import useSocket from '../hooks/useSocket';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import * as ImagePicker from 'expo-image-picker';
+
 
 const ConversationScreen = ({ route }) => {
-    const { roomName, recipientId, senderId, connectionId, userId } = route.params;
-    console.log('Parameters:', { roomName, recipientId, senderId, connectionId, userId });
+    const { roomName, senderPFP, senderFirstName, senderLastName, recipientId, senderId, connectionId, userId } = route.params;
+    console.log('Parameters:', { roomName, senderPFP, senderFirstName, senderLastName, recipientId, senderId, connectionId, userId });
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [pendingImage, setPendingImage] = useState(null);
     const socket = useSocket();
     const endOfMessagesRef = useRef(null);
 
@@ -19,7 +22,7 @@ const ConversationScreen = ({ route }) => {
 
             socket.on('connect_error', (err) => {
                 console.log(`Connect Error: ${err.message}`);
-            }); 
+            });
         }
     }, [socket]);
 
@@ -48,14 +51,12 @@ const ConversationScreen = ({ route }) => {
                 socket.on('markMessagesAsRead', readMessages);
             }
 
-            // Listen for incoming messages
             const handleNewPrivateMessage = (newMessage) => {
-                if (newMessage.text) {
+                if (newMessage.text || newMessage.fileUrl) {
                     setMessages((prevMessages) => [...prevMessages, newMessage]);
                 }
             };
 
-            // Listen for typing events
             const handleTyping = ({ senderId }) => {
                 if (senderId !== connectionId) {
                     setIsTyping(true);
@@ -65,20 +66,15 @@ const ConversationScreen = ({ route }) => {
                 }
             };
 
-            // Listen for existing messages when joining the room
             const handleExistingMessages = (messages) => {
+                console.log('Existing messages received:', messages);
                 setMessages(messages);
             };
 
             socket.on('newPrivateMessage', handleNewPrivateMessage);
             socket.on('typing', handleTyping);
             socket.on('existingMessages', handleExistingMessages);
-           
 
-            // Fetch existing messages
-            socket.emit('fetchExistingMessages', { roomName });
-
-            // Clean up the event listeners when the component unmounts or the dependencies change
             return () => {
                 if (socket) {
                     socket.off('newPrivateMessage', handleNewPrivateMessage);
@@ -91,32 +87,88 @@ const ConversationScreen = ({ route }) => {
         }
     }, [socket, roomName, connectionId, userId]);
 
+    useEffect(() => {
+        (async () => {
+            if (Platform.OS !== 'web') {
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== 'granted') {
+                    alert('Sorry, we need camera roll permissions to make this work!');
+                }
+            }
+        })();
+    }, []);
+
+    const pickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+
+        if (!result.canceled && result.assets) {
+            const image = result.assets[0];
+            console.log(image.uri);
+            setPendingImage(image.uri);
+        }
+    };
+
     const sendMessage = async () => {
-        if (!socket || !inputText.trim()) {
-            console.error('Socket is not initialized or input text is empty.');
+        if (!socket || !inputText.trim() && !pendingImage) {
+            console.error('Socket is not initialized, input text is empty or no image selected.');
             return;
         }
 
         const token = await AsyncStorage.getItem('auth_token');
-        if (!userId) {
-            console.error('User ID is undefined.');
+        if (!token || !userId) {
+            console.error('User ID or auth token is undefined.');
             return;
+        }
+
+        let fileUrl = pendingImage;
+
+        if (pendingImage) {
+            const formData = new FormData();
+
+            formData.append('file', {
+                uri: pendingImage,
+                name: "upload.jpg",
+                type: 'image/jpeg',
+            });
+
+            try {
+                const uploadResponse = await axios.post('http://localhost:3001/api/project/upload', formData, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+                fileUrl = uploadResponse.data.fileUrl;
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                return;
+            }
         }
 
         const messageData = {
             roomName,
             text: inputText,
-            senderId: userId, // Ensure this is defined
-            recipientId: recipientId,
+            senderId: userId,
+            senderPFP,
+            senderFirstName,
+            senderLastName,
+            recipientId,
+            fileUrl,
+            fileType: pendingImage ? 'image' : null,
             connectionId,
-            token, // Assuming token is also needed based on your initial setup
+            token,
         };
 
-        // Emit the private message event to the server
         socket.emit('privateMessage', messageData);
 
         setInputText('');
         setIsTyping(false);
+        setPendingImage(null);
     };
 
     useEffect(() => {
@@ -126,25 +178,19 @@ const ConversationScreen = ({ route }) => {
     const markMessagesAsRead = async () => {
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            // Make sure to include authorization headers if your API requires
-            await axios.post('https://jobjar.ai:3001/api/messages/markAsRead', {
+            await axios.post('http://localhost:3001/api/messages/markAsRead', {
                 roomName,
             }, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
             });
-            // Assuming you have a state management for unread messages counts
-            // setUnreadCounts((prevCounts) => ({
-            //     ...prevCounts,
-            //     [roomName]: 0,
-            // }));
+
         } catch (error) {
             console.error('Error marking messages as read:', error);
         }
     };
 
-    // Add useEffect to call markMessagesAsRead when messages change
     useEffect(() => {
         if (messages.length > 0) {
             markMessagesAsRead();
@@ -183,6 +229,7 @@ const ConversationScreen = ({ route }) => {
                     item.senderId === userId ? styles.sentMessage : styles.receivedMessage,
                 ]}
             >
+                {item.fileType === 'image' && <Image source={{ uri: item.fileUrl }} style={styles.messageImage} />}
                 <Text style={styles.messageText}>{item.text}</Text>
                 <Text style={styles.messageTime}>{timeString}</Text>
             </View>
@@ -210,7 +257,9 @@ const ConversationScreen = ({ route }) => {
                 renderItem={renderMessage}
                 contentContainerStyle={styles.messagesContainer}
                 ref={endOfMessagesRef}
+                onContentSizeChange={() => endOfMessagesRef.current?.scrollToEnd({ animated: true })}
             />
+
             {isTyping && <TypingIndicator />}
             <View style={styles.inputContainer}>
                 <TextInput
@@ -226,7 +275,22 @@ const ConversationScreen = ({ route }) => {
                 <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
                     <Text style={styles.sendButtonText}>Send</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
+                    <Text style={styles.imagePickerButtonText}>+</Text>
+                </TouchableOpacity>
             </View>
+            {pendingImage && (
+                <View style={styles.pendingImageContainer}>
+                    <Image source={{ uri: pendingImage }} style={styles.pendingImage} />
+                    <TouchableOpacity
+                        style={styles.removeImageButton}
+                        onPress={() => setPendingImage(null)}
+                    >
+                        <Text style={styles.removeImageButtonText}>X</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
         </View>
     );
 };
@@ -239,13 +303,14 @@ const styles = StyleSheet.create({
     messagesContainer: {
         paddingHorizontal: 10,
         paddingVertical: 20,
+
     },
     messageContainer: {
         maxWidth: '75%',
         paddingVertical: 5,
         paddingHorizontal: 10,
         borderRadius: 10,
-        marginBottom: 10,
+        marginBottom: 40,
     },
     sentMessage: {
         alignSelf: 'flex-end',
@@ -323,6 +388,40 @@ const styles = StyleSheet.create({
     sendButtonText: {
         color: '#fff',
         fontWeight: 'bold',
+    },
+    imagePickerButton: {
+        backgroundColor: '#01bf02',
+        borderRadius: 20,
+        padding: 10,
+        marginLeft: 10,
+    },
+    imagePickerButtonText: {
+        color: '#fff',
+        fontSize: 20,
+    },
+    pendingImageContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    pendingImage: {
+        width: 50,
+        height: 50,
+        marginRight: 10,
+    },
+    removeImageButton: {
+        backgroundColor: 'red',
+        borderRadius: 10,
+        padding: 5,
+    },
+    removeImageButtonText: {
+        color: '#fff',
+        fontSize: 12,
+    },
+    messageImage: {
+        width: 200,
+        height: 200,
+        marginBottom: 5,
     },
 });
 

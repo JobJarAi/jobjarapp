@@ -20,10 +20,13 @@ const Login = () => {
     try {
       const lowercaseEmail = email.toLowerCase();
 
-      const response = await axios.post(`https://jobjar.ai:3001/api/user-login`, { lowercaseEmail, password });
+      const response = await axios.post(`http://localhost:3001/api/user-login`, { lowercaseEmail, password });
       const { token } = response.data;
+      const id = response.data.id;
+      console.log('response', response.data.id);
 
       await AsyncStorage.setItem('auth_token', token);
+      await AsyncStorage.setItem('user_id', id);
 
       const jobId = await AsyncStorage.getItem('jobId');
       if (jobId) {
@@ -43,7 +46,7 @@ const Login = () => {
 
   const handleReferral = async (token, jobId) => {
     try {
-      await axios.post(`https://jobjar.ai:3001/api/referrals`, {
+      await axios.post(`http://localhost:3001/api/referrals`, {
         jobId,
         referralId: await AsyncStorage.getItem('referralId'),
       }, {

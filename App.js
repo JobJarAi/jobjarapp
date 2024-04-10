@@ -1,4 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { useFocusEffect } from '@react-navigation/native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -16,6 +19,7 @@ import { Image } from 'react-native'; // Add this import
 import MessagesScreen from './sections/MessagesScreen';
 import SignUp from './SignUp';
 import ConversationScreen from './sections/ConversationScreen';
+import useSocket from './hooks/useSocket';
 
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -33,6 +37,58 @@ function MainDrawerNavigator() {
 }
 
 function MainTabNavigator() {
+  const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [userId, setUserId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const socket = useSocket();
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchConnections().then(() => {
+
+        if (socket) {
+          socket.on('newPrivateMessage', (message) => {
+            // WRITE Logic to determine if this message should trigger a new message indicator
+            // This might involve checking if the message belongs to the current user and if it's unread senderId !== userId
+            setHasNewMessage(true); // Example condition
+          });
+
+          // Cleanup on component blur
+          return () => {
+            socket.off('newPrivateMessage');
+          };
+        }
+      });
+    }, [socket])
+  );
+
+  // Fetch user connections
+  const fetchConnections = async () => {
+    setIsLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('auth_token');
+      const storedUserId = await AsyncStorage.getItem('user_id');
+      setUserId(storedUserId);
+      const response = await axios.get('http://localhost:3001/api/user-connections', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const connections = response.data.connections;
+      console.log('connections', connections);
+      if (connections && socket) { // Ensure socket is not null
+        connections.forEach((connection) => {
+          socket.emit('joinPrivateRoom', { connectionId: connection.connectionId });
+        });
+      } else {
+        console.log('Socket not initialized');
+      }
+    } catch (error) {
+      console.error('Error fetching connections:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -61,13 +117,21 @@ function MainTabNavigator() {
       <Tab.Screen
         name="Messages"
         component={MessagesScreen}
-        options={{
+        options={({ navigation }) => ({
           tabBarIcon: ({ color, size }) => (
             <Icon name="envelope" color={color} size={size} />
           ),
-        }}
+          tabBarBadge: hasNewMessage ? '●' : undefined,
+        })}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            setHasNewMessage(false);
+            navigation.navigate('Messages');
+          },
+        })}
       />
-      
+
       <Tab.Screen
         name="Recommendations"
         component={JobRecommendations}

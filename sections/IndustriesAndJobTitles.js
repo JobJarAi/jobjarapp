@@ -12,7 +12,7 @@ const IndustriesAndJobTitles = ({ formData, setFormData }) => {
     const [jobTitleSearch, setJobTitleSearch] = useState('');
     const [industrySearch, setIndustrySearch] = useState('');
 
-    const API_BASE_URL = 'https://jobjar.ai:3001';
+    const API_BASE_URL = 'http://localhost:3001';
 
     const delayedJobTitleSearch = debounce(async (query) => {
         setIsJobTitleLoading(true);

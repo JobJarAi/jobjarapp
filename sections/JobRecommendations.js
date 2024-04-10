@@ -26,7 +26,7 @@ const JobRecommendations = () => {
         setError('');
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            const response = await axios.get('https://jobjar.ai:3001/api/mobile/getRecommendations', {
+            const response = await axios.get('http://localhost:3001/api/mobile/getRecommendations', {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -84,7 +84,7 @@ const JobRecommendations = () => {
             console.log('Applying for job:', jobId); // Debugging log
             setIsApplying(true);
             const token = await AsyncStorage.getItem('auth_token');
-            await axios.post('https://jobjar.ai:3001/api/apply', { jobId }, {
+            await axios.post('http://localhost:3001/api/apply', { jobId }, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -109,7 +109,7 @@ const JobRecommendations = () => {
     const applyToJob = async (jobId) => {
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            await axios.post('https://jobjar.ai:3001/api/apply', { jobId }, {
+            await axios.post('http://localhost:3001/api/apply', { jobId }, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

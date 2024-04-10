@@ -22,6 +22,12 @@ const ResponsiveImage = ({ source, borderRadius, ...props }) => {
     const [size, setSize] = useState({ width: undefined, height: undefined });
 
     const onContainerLayout = (event) => {
+        // Ensure source.uri is not empty before proceeding
+        if (!source || !source.uri || source.uri.trim() === '') {
+            console.warn('source.uri is empty or not provided for ResponsiveImage');
+            return; // Exit the function if source.uri is empty or not provided
+        }
+
         const { width: containerWidth } = event.nativeEvent.layout;
         Image.getSize(source.uri, (width, height) => {
             // Calculate the width and height ratios
@@ -29,12 +35,14 @@ const ResponsiveImage = ({ source, borderRadius, ...props }) => {
             const scaledHeight = height * widthRatio;
             // Set new width and height
             setSize({ width: containerWidth, height: scaledHeight });
+        }, (error) => {
+            console.error('Error fetching image size for uri:', source.uri, error);
         });
     };
 
     return (
         <View onLayout={onContainerLayout} {...props}>
-            {size.width && size.height ? (
+            {size.width && size.height && source.uri && source.uri.trim() !== '' ? (
                 <Image
                     source={source}
                     style={{ width: size.width, height: size.height, borderRadius }}
@@ -64,7 +72,7 @@ const LiveFeed = () => {
     const fetchUserId = async () => {
         try {
             const authToken = await AsyncStorage.getItem('auth_token');
-            const response = await axios.get('https://jobjar.ai:3001/api/user/details', {
+            const response = await axios.get('http://localhost:3001/api/user/details', {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
             setCurrentUser(response.data.userId); // This will trigger a re-render
@@ -80,7 +88,7 @@ const LiveFeed = () => {
         const token = await AsyncStorage.getItem('auth_token');
 
         try {
-            const response = await axios.get(`https://jobjar.ai:3001/api/posts?page=${page}&perPage=${itemsPerPage}`, {
+            const response = await axios.get(`http://localhost:3001/api/posts?page=${page}&perPage=${itemsPerPage}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -156,7 +164,7 @@ const LiveFeed = () => {
     const refreshRepost = async (repostId) => {
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            const response = await axios.get(`https://jobjar.ai:3001/api/posts/${repostId}`, {
+            const response = await axios.get(`http://localhost:3001/api/posts/${repostId}`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -180,7 +188,7 @@ const LiveFeed = () => {
         setIsReviewing(true);
         try {
             const authToken = await AsyncStorage.getItem('auth_token');
-            const response = await axios.post(`https://jobjar.ai:3001/api/check-post/${postId}`, {}, {
+            const response = await axios.post(`http://localhost:3001/api/check-post/${postId}`, {}, {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
 
@@ -209,7 +217,7 @@ const LiveFeed = () => {
             const authToken = await AsyncStorage.getItem('auth_token');
             console.log('Got auth token:', authToken); // Check if authToken is retrieved
 
-            const response = await axios.post(`https://jobjar.ai:3001/api/apply`, { jobId }, {
+            const response = await axios.post(`http://localhost:3001/api/apply`, { jobId }, {
                 headers: { Authorization: `Bearer ${authToken}` }
             });
 
@@ -258,7 +266,7 @@ const LiveFeed = () => {
         try {
             const authToken = await AsyncStorage.getItem('auth_token');
 
-            await axios.post(`https://jobjar.ai:3001/api/posts/${repostId}/comment`, {
+            await axios.post(`http://localhost:3001/api/posts/${repostId}/comment`, {
                 comment: commentText,
             }, {
                 headers: { 'Authorization': `Bearer ${authToken}` }
@@ -277,11 +285,11 @@ const LiveFeed = () => {
             const isLiked = commentLikes[commentId] || false;
             const token = await AsyncStorage.getItem('auth_token');
             if (isLiked) {
-                await axios.put(`https://jobjar.ai:3001/api/posts/${postId}/comments/${commentId}/unlike`, {}, {
+                await axios.put(`http://localhost:3001/api/posts/${postId}/comments/${commentId}/unlike`, {}, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             } else {
-                await axios.put(`https://jobjar.ai:3001/api/posts/${postId}/comments/${commentId}/like`, {}, {
+                await axios.put(`http://localhost:3001/api/posts/${postId}/comments/${commentId}/like`, {}, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             }
@@ -303,7 +311,7 @@ const LiveFeed = () => {
 
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            await axios.post(`https://jobjar.ai:3001/api/posts/${postId}/like`, {}, {
+            await axios.post(`http://localhost:3001/api/posts/${postId}/like`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         } catch (error) {
@@ -325,7 +333,7 @@ const LiveFeed = () => {
 
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            await axios.delete(`https://jobjar.ai:3001/api/posts/${postId}/unlike`, {
+            await axios.delete(`http://localhost:3001/api/posts/${postId}/unlike`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         } catch (error) {
@@ -415,7 +423,7 @@ const LiveFeed = () => {
                 <>
                     <View style={styles.jobContentContainer}>
                         <Text style={styles.content}>{item.comment}</Text>
-                        {item.image && (
+                        {item.originalContentImage && item.originalContentImage.trim() !== '' && (
                             <Image
                                 style={styles.postImage}
                                 source={{ uri: item.originalContentImage }}
@@ -452,7 +460,7 @@ const LiveFeed = () => {
                 // Original Content
                 <View style={styles.originalContentContainer}>
                     <Text style={styles.content}>{item.originalContent}</Text>
-                    {item.originalContentImage && (
+                    {item.originalContentImage && item.originalContentImage.trim() !== '' && (
                         <View style={styles.postImageContainer}>
                             <ResponsiveImage
                                 style={styles.postImage}

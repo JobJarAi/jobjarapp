@@ -3,190 +3,246 @@ import React, { useState, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, TextInput, ActivityIndicator } from 'react-native';
 import useSocket from '../hooks/useSocket';
 
 const MessagesScreen = ({ navigation }) => {
-  const [recentMessages, setRecentMessages] = useState([]);
-  const [unreadCounts, setUnreadCounts] = useState({});
-  const [userId, setUserId] = useState(null);
+  const [connections, setConnections] = useState([]);
+  const [filteredConnections, setFilteredConnections] = useState([]);
+  const [searchText, setSearchText] = useState('');
+  const [senderFirstName, setSenderFirstName] = useState('');
+  const [senderLastName, setSenderLastName] = useState('');
+  const [senderPFP, setSenderPFP] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [typingConnections, setTypingConnections] = useState([]);
+  const [userId, setUserId] = useState(null)
   const socket = useSocket();
 
   useFocusEffect(
     React.useCallback(() => {
-      const fetchMessages = async () => {
-        try {
-          const token = await AsyncStorage.getItem('auth_token');
-          const response = await axios.get('https://jobjar.ai:3001/api/connectionIds', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = response.data;
-          console.log('Fetched userId:', data.userId);
-          console.log('Fetched messages:', data.connections);
-
-          if (data.userId) {
-            setUserId(data.userId);
-          }
-          if (data.connections) {
-            setRecentMessages(data.connections);
-          }
-        } catch (error) {
-          console.error('Error fetching messages:', error);
-        }
-      };
-
-      fetchMessages();
+      fetchConnections();
     }, [])
   );
 
-  const fetchUnreadCounts = async () => {
-    try {
-      const token = await AsyncStorage.getItem('auth_token');
-      const response = await axios.get('https://jobjar.ai:3001/api/user/unreadCounts', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setUnreadCounts(response.data.unreadCounts);
-    } catch (error) {
-      console.error('Error fetching unread counts:', error);
-    }
-  };
-
-  const fetchNewMessages = async () => {
-    try {
-      const token = await AsyncStorage.getItem('auth_token');
-      const response = await axios.get('https://jobjar.ai:3001/api/connectionIds', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = response.data;
-      console.log('Fetched userId:', data.userId);
-      console.log('Fetched messages:', data.connections);
-
-      if (data.userId) {
-        setUserId(data.userId);
-      }
-      if (data.connections) {
-        setRecentMessages(data.connections);
-      }
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchUnreadCounts();
-    fetchNewMessages();
-  }, []);
-
   useEffect(() => {
     if (socket) {
-      const joinRooms = () => {
-        recentMessages.forEach((message) => {
-          socket.emit('joinPrivateRoom', {
-            connectionId: message.connectionId,
-            roomName: message.roomName,
-          });
-        });
-      };
-
-      if (socket.connected) {
-        joinRooms();
-      } else {
-        console.log('Socket not connected, waiting for connection...');
-        socket.on('connect', joinRooms);
-      }
-
-      // Listen for incoming messages
-      const handleNewPrivateMessage = (newMessage) => {
-        if (newMessage.text) {
-          setRecentMessages((prevMessages) => {
-            const updatedMessages = prevMessages.map((message) => {
-              if (message.roomName === newMessage.roomName) {
-                return newMessage;
-              }
-              return message;
-            });
-            return sortMessages(updatedMessages);
-          });
-          // Increment the unread count for the conversation
-          setUnreadCounts((prevCounts) => ({
-            ...prevCounts,
-            [newMessage.roomName]: (prevCounts[newMessage.roomName] || 0) + 1,
-          }));
-        }
-      };
-
       socket.on('newPrivateMessage', handleNewPrivateMessage);
+      socket.on('typing', handleTypingEvent);
 
-      // Clean up the event listeners when the component unmounts or the dependencies change
       return () => {
-        if (socket) {
-          socket.off('newPrivateMessage', handleNewPrivateMessage);
-          socket.off('connect', joinRooms);
-        }
+        socket.off('newPrivateMessage', handleNewPrivateMessage);
+        socket.off('typing', handleTypingEvent);
       };
     }
-  }, [socket, recentMessages]);
+  }, [socket, userId]);
 
-  const handleConversationClick = (message) => {
-    const { roomName, connectionId, recipientId, senderId } = message;
-    navigation.navigate('ConversationScreen', {
-      roomName,
-      recipientId,
-      senderId,
-      connectionId,
-      userId,
-    });
+  const fetchConnections = async () => {
+    try {
+      setIsLoading(true);
+      const token = await AsyncStorage.getItem('auth_token');
+      const userId = await AsyncStorage.getItem('user_id');
+      setUserId(userId);
 
-    // Reset the unread count for the clicked conversation
-    setUnreadCounts((prevCounts) => ({
-      ...prevCounts,
-      [roomName]: 0,
-    }));
+      const [connectionsResponse, unreadMessagesCountResponse] = await Promise.all([
+        axios.get('http://localhost:3001/api/user-connections', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get('http://localhost:3001/api/unread-messages-count', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      const data = connectionsResponse.data;
+      const unreadMessagesCount = unreadMessagesCountResponse.data;
+
+      setSenderPFP(data.senderPFP);
+      setSenderFirstName(data.senderFirstName);
+      setSenderLastName(data.senderLastName);
+
+      if (data.connections) {
+        const connectionsWithUnreadMessages = data.connections.map((connection) => {
+          const unreadCount = unreadMessagesCount.find(
+            (count) => count._id === connection.connectionId
+          );
+          return {
+            ...connection,
+            hasUnreadMessages: unreadCount ? unreadCount.count > 0 : false,
+          };
+        });
+
+        setConnections(connectionsWithUnreadMessages);
+        setFilteredConnections(connectionsWithUnreadMessages);
+        joinPrivateRooms(connectionsWithUnreadMessages);
+      }
+    } catch (error) {
+      console.error('Error fetching connections:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const sortMessages = (messages) => {
-    return messages.sort((a, b) => {
-      const unreadCountA = unreadCounts[a.roomName] || 0;
-      const unreadCountB = unreadCounts[b.roomName] || 0;
-      return unreadCountB - unreadCountA;
-    });
+  const joinPrivateRooms = (connections) => {
+    if (socket) {
+      connections.forEach((connection) => {
+        socket.emit('joinPrivateRoom', { connectionId: connection.connectionId });
+      });
+    }
   };
 
+  const handleNewPrivateMessage = (newMessage) => {
+    // Assume the new message has the structure of { ... message details ..., connectionId: '...', read: boolean }
+    setConnections(prevConnections =>
+      prevConnections.map(connection => {
+        if (connection.connectionId === newMessage.connectionId && newMessage.recipientId === userId && !newMessage.read) {
+          return { ...connection, hasUnreadMessages: true };
+        }
+        return connection;
+      })
+    );
+  };
 
+  const handleSearch = (text) => {
+    setSearchText(text);
+    const filtered = connections.filter((connection) =>
+      connection.requesterName.toLowerCase().includes(text.toLowerCase())
+    );
+    setFilteredConnections(filtered);
+  };
 
-  const renderConversationItem = ({ item }) => (
-    <TouchableOpacity onPress={() => handleConversationClick(item)}>
-      <View style={styles.conversationItem}>
-        <Image source={{ uri: item.avatar }} style={styles.avatar} />
-        <View style={styles.conversationDetails}>
-          <Text style={styles.conversationPartner}>{item.partnerName}</Text>
-          <Text style={styles.conversationPreview}>{item.text}</Text>
-        </View>
-        <View style={styles.conversationMetadata}>
-          <Text style={styles.timestamp}>{item.timestamp}</Text>
-          {unreadCounts[item.roomName] > 0 && (
-            <View style={styles.unreadIndicator}>
-              <Text style={styles.unreadCount}>{unreadCounts[item.roomName]}</Text>
-            </View>
-          )}
-        </View>
+  const AvatarInitials = ({ name }) => {
+    const initials = name
+      .split(' ')
+      .map((word) => word.charAt(0))
+      .join('');
+
+    return (
+      <View style={styles.avatarInitials}>
+        <Text style={styles.avatarInitialsText}>{initials}</Text>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
+
+  const handleConnectionClick = (connection) => {
+    navigation.navigate('ConversationScreen', {
+      roomName: connection.connectionId,
+      senderPFP: senderPFP,
+      senderFirstName: senderFirstName,
+      senderLastName: senderLastName,
+      recipientId: connection.requesterUserId,
+      senderId: userId,
+      connectionId: connection.connectionId,
+      userId: userId,
+    });
+  };
+
+  const handleTypingEvent = ({ senderId, roomName, senderFirstName, senderLastName }) => {
+    setTypingConnections((prevTypingConnections) => {
+      const typingConnection = { senderId, roomName, senderFirstName, senderLastName };
+      const existingIndex = prevTypingConnections.findIndex(
+        (connection) => connection.senderId === senderId && connection.roomName === roomName
+      );
+
+      if (existingIndex !== -1) {
+        // If the typing connection already exists, remove it and add it again at the end
+        const updatedTypingConnections = [...prevTypingConnections];
+        updatedTypingConnections.splice(existingIndex, 1);
+        updatedTypingConnections.push(typingConnection);
+        return updatedTypingConnections;
+      } else {
+        // If the typing connection doesn't exist, add it to the end
+        return [...prevTypingConnections, typingConnection];
+      }
+    });
+
+    // Clear the typing indicator after a certain timeout (e.g., 2 seconds)
+    setTimeout(() => {
+      setTypingConnections((prevTypingConnections) =>
+        prevTypingConnections.filter(
+          (connection) => !(connection.senderId === senderId && connection.roomName === roomName)
+        )
+      );
+    }, 2000);
+  };
+
+  useEffect(() => {
+    const filtered = connections.filter((connection) =>
+      connection.requesterName.toLowerCase().includes(searchText.toLowerCase())
+    );
+    setFilteredConnections(filtered);
+  }, [searchText, connections]);
+
+  const renderConnectionItem = ({ item, userId }) => {
+    const { requesterName, requesterPFP, createdAt, latestMessage, hasUnreadMessages, connectionId, requesterUserId } = item;
+    const isTyping = typingConnections.some(
+      (connection) => connection.roomName === item.connectionId
+    );
+
+    return (
+      <TouchableOpacity onPress={() => handleConnectionClick({ connectionId, requesterUserId })}>
+        <View style={styles.connectionItem}>
+          {requesterPFP ? (
+            <Image source={{ uri: requesterPFP }} style={styles.avatar} />
+          ) : (
+            <AvatarInitials name={requesterName} />
+          )}
+          <View style={styles.connectionDetails}>
+            <View style={styles.connectionNameContainer}>
+              <Text style={styles.connectionName}>{requesterName}</Text>
+              {hasUnreadMessages && (
+                <View style={styles.unreadIndicatorContainer}>
+                  <Text style={styles.unreadIndicator}>New</Text>
+                </View>
+              )}
+            </View>
+            {isTyping ? (
+              <Text style={styles.typingIndicator}>Typing...</Text>
+            ) : (
+              <>
+                {latestMessage ? (
+                  <Text style={styles.messagePreview}>{latestMessage}</Text>
+                ) : (
+                  <Text style={styles.connectionDate}>{new Date(createdAt).toLocaleDateString()}</Text>
+                )}
+              </>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderEmptyState = () => {
+    return (
+      <View style={styles.emptyState}>
+        <Text style={styles.emptyStateText}>No connections found.</Text>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={sortMessages(recentMessages)}
-        keyExtractor={(item) => item.connectionId.toString()}
-        renderItem={renderConversationItem}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        refreshing={false}
-        onRefresh={() => {
-          fetchNewMessages();
-          fetchUnreadCounts();
-        }}
-      />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Messages</Text>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search connections"
+          value={searchText}
+          onChangeText={handleSearch}
+        />
+      </View>
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#0000ff" style={styles.loading} />
+      ) : (
+        <FlatList
+          data={filteredConnections}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => renderConnectionItem({ item, userId })}
+          ListEmptyComponent={renderEmptyState}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          refreshing={isLoading}
+          onRefresh={fetchConnections}
+        />
+      )}
     </View>
   );
 };
@@ -196,52 +252,117 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  conversationItem: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    marginLeft: 16,
+    paddingHorizontal: 12,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+  },
+  connectionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    marginHorizontal: 20,
+    marginVertical: 12,
   },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    marginRight: 16,
+    marginRight: 20,
   },
-  conversationDetails: {
+  connectionDetails: {
     flex: 1,
+    flexShrink: 1,
   },
-  conversationPartner: {
-    fontSize: 16,
+  connectionName: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333333',
   },
-  conversationPreview: {
-    fontSize: 14,
-    color: '#888888',
-    marginTop: 4,
-  },
-  conversationMetadata: {
-    alignItems: 'flex-end',
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#888888',
-  },
-  unreadIndicator: {
-    backgroundColor: '#FF5722',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginTop: 8,
-  },
-  unreadCount: {
-    color: '#FFFFFF',
-    fontSize: 12,
+  connectionDate: {
+    fontSize: 15,
+    color: '#777777',
+    marginTop: 6,
   },
   separator: {
     height: 1,
     backgroundColor: '#EEEEEE',
+    marginHorizontal: 16,
+  },
+  loading: {
+    marginTop: 16,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#888888',
+  },
+  connectionNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  unreadIndicatorContainer: {
+    backgroundColor: 'red',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    marginLeft: 12,
+    alignSelf: 'center',
+  },
+  unreadIndicator: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  messagePreview: {
+    fontSize: 15,
+    color: '#777777',
+    marginTop: 4,
+  },
+  avatarInitials: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  avatarInitialsText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333333',
   },
 });
 
