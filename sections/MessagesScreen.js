@@ -44,10 +44,10 @@ const MessagesScreen = ({ navigation }) => {
       setUserId(userId);
 
       const [connectionsResponse, unreadMessagesCountResponse] = await Promise.all([
-        axios.get('https://jobjar.ai:3001/api/user-connections', {
+        axios.get('localhost:3001/api/user-connections', {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        axios.get('https://jobjar.ai:3001/api/unread-messages-count', {
+        axios.get('localhost:3001/api/unread-messages-count', {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);

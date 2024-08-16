@@ -74,7 +74,7 @@ const TalentSignUp = ({ navigation }) => {
         }
         setLoading(true);
         try {
-            const response = await axios.post(`https://jobjar.ai:3001/api/email`, { email });
+            const response = await axios.post(`localhost:3001/api/email`, { email });
             if (response.status === 200) {
                 setEmailSent(true);
                 setError(''); // Clear any previous errors
@@ -93,7 +93,7 @@ const TalentSignUp = ({ navigation }) => {
     const verifyEmail = async () => {
         setLoading(true);
         try {
-            const response = await axios.post(`https://jobjar.ai:3001/api/verify`, { email, code: verificationToken });
+            const response = await axios.post(`localhost:3001/api/verify`, { email, code: verificationToken });
             if (response.data.message === "Email verification successful") {
                 setIsTokenVerified(true);
                 setError(''); // Clear any previous errors
@@ -118,7 +118,7 @@ const TalentSignUp = ({ navigation }) => {
         if (resumeData) {
             const roleUrlSegment = 'jobseeker';
             try {
-                const response = await axios.post(`https://jobjar.ai:3001/api/signup/${roleUrlSegment}`, formData);
+                const response = await axios.post(`localhost:3001/api/signup/${roleUrlSegment}`, formData);
                 if (response.status === 200 || response.status === 201) {
                     await AsyncStorage.setItem('auth_token', response.data.token);
                     await AsyncStorage.setItem('user_role', response.data.role);

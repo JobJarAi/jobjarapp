@@ -14,7 +14,7 @@ const ConnectUserButton = ({ targetUserId }) => {
     const checkConnection = async () => {
       try {
         const token = await AsyncStorage.getItem('auth_token');
-        const response = await axios.get(`https://jobjar.ai:3001/api/user/check-connection/${targetUserId}`, {
+        const response = await axios.get(`localhost:3001/api/user/check-connection/${targetUserId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setIsConnected(response.data.connectionExists);
@@ -33,7 +33,7 @@ const ConnectUserButton = ({ targetUserId }) => {
     const requestData = { targetUserId, reason, comment, requesterUserRole };
     try {
       const token = await AsyncStorage.getItem('auth_token');
-      await axios.put('https://jobjar.ai:3001/api/user-connect', requestData, {
+      await axios.put('localhost:3001/api/user-connect', requestData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       console.log('Connection request sent successfully');
@@ -46,7 +46,7 @@ const ConnectUserButton = ({ targetUserId }) => {
   const handleDeleteConnection = async () => {
     try {
       const token = await AsyncStorage.getItem('auth_token');
-      await axios.delete(`https://jobjar.ai:3001/api/delete-connection/${targetUserId}`, {
+      await axios.delete(`localhost:3001/api/delete-connection/${targetUserId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       console.log('Connection deleted successfully');

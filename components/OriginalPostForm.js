@@ -70,7 +70,7 @@ const OriginalPostForm = () => {
         };
 
         try {
-            const response = await axios.post('https://jobjar.ai:3001/api/create-post', formData, { headers });
+            const response = await axios.post('localhost:3001/api/create-post', formData, { headers });
             console.log(response.data);
             Alert.alert("Post Successful", "Your post has been created successfully.");
             setOriginalContent('');

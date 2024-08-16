@@ -69,7 +69,7 @@ function MainTabNavigator() {
       const token = await AsyncStorage.getItem('auth_token');
       const storedUserId = await AsyncStorage.getItem('user_id');
       setUserId(storedUserId);
-      const response = await axios.get('https://jobjar.ai:3001/api/user-connections', {
+      const response = await axios.get('localhost:3001/api/user-connections', {
         headers: { Authorization: `Bearer ${token}` },
       });
 

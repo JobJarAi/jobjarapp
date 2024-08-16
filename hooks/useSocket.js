@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
-const SOCKET_URL = 'https://jobjar.ai:3001';
+const SOCKET_URL = 'localhost:3001';
 
 const useSocket = () => {
     const [socket, setSocket] = useState(null);
