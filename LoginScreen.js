@@ -14,7 +14,7 @@ const Login = () => {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.post(`https://jobjar.ai:3001/api/login`, { email, password });
+      const response = await axios.post(`http://localhost:3001/api/login`, { email, password });
       const { token, refreshToken, role } = response.data;
 
       await AsyncStorage.setItem('auth_token', token);
@@ -23,7 +23,7 @@ const Login = () => {
 
       // Navigate based on role
       if (role === 'jobseeker') {
-        navigation.navigate("Recommendations");
+        navigation.navigate("MainTab");
       } else if (role === 'recruiter') {
         navigation.navigate("Toolbox");
       } else if (role === 'employer') {

@@ -70,7 +70,7 @@ const OriginalPostForm = () => {
         };
 
         try {
-            const response = await axios.post('https://jobjar.ai:3001/api/originalPost', formData, { headers });
+            const response = await axios.post('http://localhost:3001/api/originalPost', formData, { headers });
             console.log(response.data);
             Alert.alert("Post Successful", "Your post has been created successfully.");
             setOriginalContent('');
@@ -112,7 +112,7 @@ const OriginalPostForm = () => {
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 40,
+        marginBottom: 0,
         marginTop: 10,
         backgroundColor: '#000000', 
         alignItems: 'center',

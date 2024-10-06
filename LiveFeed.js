@@ -37,7 +37,7 @@ const LiveFeed = () => {
 
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            const response = await axios.get(`https://jobjar.ai:3001/api/reposts?page=${page}&perPage=${itemsPerPage}`, {
+            const response = await axios.get(`http://localhost:3001/api/reposts?page=${page}&perPage=${itemsPerPage}`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -98,7 +98,7 @@ const LiveFeed = () => {
     const refreshRepost = async (repostId) => {
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            const response = await axios.get(`https://jobjar.ai:3001/api/reposts/${repostId}`, {
+            const response = await axios.get(`http://localhost:3001/api/reposts/${repostId}`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -122,7 +122,7 @@ const LiveFeed = () => {
         setIsReviewing(true);
         try {
             const authToken = await AsyncStorage.getItem('auth_token');
-            const response = await axios.post(`https://jobjar.ai:3001/api/moderate/${repostId}`, {}, {
+            const response = await axios.post(`http://localhost:3001/api/moderate/${repostId}`, {}, {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
 
@@ -143,7 +143,7 @@ const LiveFeed = () => {
         try {
             const authToken = await AsyncStorage.getItem('auth_token');
             if (authToken) {
-                const response = await axios.get('https://jobjar.ai:3001/api/user/details', {
+                const response = await axios.get('http://localhost:3001/api/user/details', {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 setCurrentUser(response.data.userId);
@@ -161,7 +161,7 @@ const LiveFeed = () => {
             const authToken = await AsyncStorage.getItem('auth_token');
             console.log('Got auth token:', authToken); // Check if authToken is retrieved
 
-            const response = await axios.post(`https://jobjar.ai:3001/api/apply`, { jobId }, {
+            const response = await axios.post(`http://localhost:3001/api/apply`, { jobId }, {
                 headers: { Authorization: `Bearer ${authToken}` }
             });
 
@@ -211,7 +211,7 @@ const LiveFeed = () => {
             const authToken = await AsyncStorage.getItem('auth_token');
             const role = await AsyncStorage.getItem('user_role'); // Retrieve user role from AsyncStorage
 
-            await axios.post(`https://jobjar.ai:3001/api/reposts/${repostId}/comment`, {
+            await axios.post(`http://localhost:3001/api/reposts/${repostId}/comment`, {
                 comment: commentText,
                 role,
             }, {
@@ -234,7 +234,7 @@ const LiveFeed = () => {
 
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            await axios.post(`https://jobjar.ai:3001/api/reposts/${postId}/like`, {}, {
+            await axios.post(`http://localhost:3001/api/reposts/${postId}/like`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         } catch (error) {
@@ -256,7 +256,7 @@ const LiveFeed = () => {
 
         try {
             const token = await AsyncStorage.getItem('auth_token');
-            await axios.delete(`https://jobjar.ai:3001/api/reposts/${postId}/unlike`, {
+            await axios.delete(`http://localhost:3001/api/reposts/${postId}/unlike`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         } catch (error) {
